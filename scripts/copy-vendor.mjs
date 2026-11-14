@@ -12,9 +12,6 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const files = [
   // Sveltia CMS for /admin
   ['node_modules/@sveltia/cms/dist/sveltia-cms.js', 'public/admin/sveltia-cms.js'],
-  // ONNX Runtime (CPU/WebAssembly) for Ask CIS quick answers
-  ['node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs', 'public/vendor/ort/ort-wasm-simd-threaded.mjs'],
-  ['node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm', 'public/vendor/ort/ort-wasm-simd-threaded.wasm'],
 ];
 
 for (const [from, to] of files) {

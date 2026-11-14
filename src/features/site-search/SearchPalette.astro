@@ -1,8 +1,7 @@
 ---
 /**
  * Feature E: ⌘K / Ctrl+K search across the site. Opens from the header
- * button too (works on phones). Keyword results are instant; if Ask CIS's
- * model is already loaded, they are re-ranked by meaning.
+ * button too (works on phones). Results are instant: the index is prebuilt.
  */
 ---
 
@@ -31,7 +30,6 @@
 <script>
   import { withBase } from '../../lib/url';
   import { keywordSearch, loadIndex } from './search';
-  import { rerank } from '../ask-cis/retrieval';
 
   const dialog = document.querySelector<HTMLDialogElement>('[data-search]')!;
   const input = dialog.querySelector<HTMLInputElement>('[data-search-input]')!;
@@ -66,8 +64,7 @@
   input.addEventListener('input', async () => {
     const query = input.value;
     const run = ++seq;
-    let results = keywordSearch(await loadIndex(withBase('/')), query);
-    results = await rerank(results, query);
+    const results = keywordSearch(await loadIndex(withBase('/')), query);
     if (run !== seq) return; // a newer keystroke won
     list.replaceChildren(
       ...results.map((d, i) => {

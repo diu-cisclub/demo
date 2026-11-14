@@ -7,15 +7,6 @@ import { loadEnv } from 'vite';
 const env = loadEnv(process.env.NODE_ENV ?? 'production', process.cwd(), '');
 const supabaseOrigin = env.PUBLIC_SUPABASE_URL ? new URL(env.PUBLIC_SUPABASE_URL).origin : '';
 
-// Hosts the opt-in "Ask CIS" assistant downloads its models from.
-// Nothing is fetched from them unless a visitor opens the assistant.
-const modelHosts = [
-  'https://huggingface.co',
-  'https://*.huggingface.co',
-  'https://*.hf.co',
-  'https://raw.githubusercontent.com',
-];
-
 export default defineConfig({
   // SITE_URL / BASE_PATH are set by the deploy workflow (see README → Deploy).
   site: env.SITE_URL || 'http://localhost:4321',
@@ -43,14 +34,15 @@ export default defineConfig({
     // inline scripts/styles. Nothing else may run or load.
     csp: {
       algorithm: 'SHA-384',
-      scriptDirective: { resources: ["'self'", "'wasm-unsafe-eval'"] },
+      scriptDirective: { resources: ["'self'"] },
       styleDirective: { resources: ["'self'"] },
       directives: [
         "default-src 'self'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
-        /** @type {`connect-src ${string}`} */ (`connect-src 'self' ${supabaseOrigin} ${modelHosts.join(' ')}`.replace(/\s+/g, ' ')),
-        "worker-src 'self' blob:",
+        // Only this site and the club's own Supabase project (forms, inbox, Ask CIS fallback).
+        /** @type {`connect-src ${string}`} */ (`connect-src 'self' ${supabaseOrigin}`.trim()),
+        "worker-src 'self'",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",

@@ -1,13 +1,17 @@
 /**
- * Ask CIS panel controller. Loaded on first open (see AskCis.astro).
- * Quick answers: semantic search over the site. With "Wake the AI", a small
- * on-device language model writes an answer from the same passages.
+ * Ask CIS panel controller (loaded on first open, see AskCis.astro).
+ * 1. Ready-made answers, matched on the device: instant and private.
+ * 2. Low confidence → the cloud fallback (cloud.ts), clearly labelled.
+ * 3. If that is unavailable → the closest page from the site search.
  */
+import type { AnswerCard } from '../../lib/answers';
 import { withBase } from '../../lib/url';
-import { loadEmbedder } from './embedder';
-import { buildIndex, retrieve, type Hit } from './retrieval';
+import { keywordSearch, loadIndex } from '../site-search/search';
+import { askCloud, cloudAvailable } from './cloud';
+import { createMatcher } from './matcher';
 
-const MIN_SCORE = 0.25; // below this, passages are unlikely to answer the question
+/** Below this, a ready-made answer is more likely wrong than right. Tuned on test questions. */
+const CONFIDENT = 0.55;
 
 export function mountAskCis(root: HTMLElement) {
   const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
@@ -16,118 +20,82 @@ export function mountAskCis(root: HTMLElement) {
   const log = $('[data-ask-log]');
   const form = $<HTMLFormElement>('[data-ask-form]');
   const input = form.querySelector('input')!;
-  const progress = $('[data-ask-progress]');
-  const bar = $('[data-ask-bar]');
-  const progressText = $('[data-ask-progress-text]');
   const base = withBase('/');
-  let mode: 'off' | 'quick' | 'ai' = 'off';
+  const matcher = fetch(`${base}ask-index.json`)
+    .then((r) => r.json() as Promise<AnswerCard[]>)
+    .then(createMatcher);
 
-  const say = (text: string, who: 'bot' | 'you') => {
+  /** Appends a message; text only (answers may come from the cloud). */
+  function say(text: string, who: 'bot' | 'you', extra?: { links?: { label: string; url: string }[]; note?: string }) {
+    const box = document.createElement('div');
+    box.className = `msg msg--${who}`;
     const p = document.createElement('p');
-    p.className = `msg msg--${who}`;
     p.textContent = text;
-    log.append(p);
+    box.append(p);
+    if (extra?.links?.length) {
+      const nav = document.createElement('p');
+      nav.className = 'msg-links';
+      for (const l of extra.links) {
+        const a = document.createElement('a');
+        a.href = l.url.startsWith('/') ? withBase(l.url) : l.url;
+        a.textContent = l.label;
+        nav.append(a);
+      }
+      box.append(nav);
+    }
+    if (extra?.note) {
+      const n = document.createElement('p');
+      n.className = 'msg-note';
+      n.textContent = extra.note;
+      box.append(n);
+    }
+    log.append(box);
     log.scrollTop = log.scrollHeight;
-    return p;
-  };
-  const setProgress = (fraction: number, text: string) => {
-    bar.style.transform = `scaleX(${Math.max(0.02, Math.min(1, fraction))})`;
-    progressText.textContent = text;
-  };
+    return box;
+  }
 
   function toggle(show = panel.hidden) {
     panel.hidden = !show;
     launcher.setAttribute('aria-expanded', String(show));
-    if (show) (form.hidden ? $<HTMLButtonElement>('[data-ask-load]') : input).focus();
-    else launcher.focus();
+    (show ? input : launcher).focus();
   }
   $('[data-ask-close]').addEventListener('click', () => toggle(false));
   panel.addEventListener('keydown', (e) => e.key === 'Escape' && toggle(false));
-
-  // ── Quick answers ───────────────────────────────────────────────────────
-  $('[data-ask-load]').addEventListener('click', async () => {
-    $('[data-ask-start]').hidden = true;
-    progress.hidden = false;
-    try {
-      await loadEmbedder(base, (f) => setProgress(f * 0.8, `Downloading model… ${Math.round(f * 100)}%`));
-      setProgress(0.85, 'Reading the website…');
-      await buildIndex(base, (f) => setProgress(0.85 + f * 0.15, 'Reading the website…'));
-      mode = 'quick';
-      progress.hidden = true;
-      form.hidden = false;
-      $('[data-ask-wake-row]').hidden = false;
-      input.focus();
-    } catch {
-      progress.hidden = true;
-      $('[data-ask-start]').hidden = false;
-      say('The model could not be downloaded. Check your connection and try again.', 'bot');
-    }
-  });
-
-  function showHits(hits: Hit[]) {
-    const ul = document.createElement('ul');
-    ul.className = 'hits';
-    for (const { doc } of hits) {
-      const li = document.createElement('li');
-      const a = document.createElement('a');
-      a.href = withBase(doc.url);
-      a.textContent = doc.title;
-      const p = document.createElement('p');
-      p.textContent = doc.text;
-      li.append(a, p);
-      ul.append(li);
-    }
-    log.append(ul);
-    log.scrollTop = log.scrollHeight;
-  }
+  root.querySelectorAll<HTMLButtonElement>('[data-ask-suggest]').forEach((b) =>
+    b.addEventListener('click', () => {
+      input.value = b.textContent ?? '';
+      form.requestSubmit();
+    }),
+  );
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const q = input.value.trim();
-    if (!q || mode === 'off') return;
+    const q = input.value.trim().slice(0, 300);
+    if (!q) return;
     input.value = '';
     say(q, 'you');
-    const hits = (await retrieve(q, 4)).filter((h) => h.score >= MIN_SCORE);
-    if (!hits.length) {
-      say('I couldn’t find that on the website. Try other words, or ask the committee through the Contact page.', 'bot');
-      return;
-    }
-    if (mode === 'quick') {
-      say('These parts of the site look most relevant:', 'bot');
-      showHits(hits.slice(0, 3));
-      return;
-    }
-    const { answer } = await import('./llm');
-    const bubble = say('…', 'bot');
-    bubble.textContent = '';
-    for await (const token of answer(q, hits)) {
-      bubble.textContent += token;
-      log.scrollTop = log.scrollHeight;
-    }
-    say('Sources:', 'bot');
-    showHits(hits);
-  });
 
-  // ── Full AI (WebGPU) ────────────────────────────────────────────────────
-  $('[data-ask-wake]').addEventListener('click', async () => {
-    const { hasWebGPU, loadLLM } = await import('./llm');
-    if (!(await hasWebGPU())) {
-      $('[data-ask-wake-note]').textContent = 'This browser has no WebGPU, so quick answers it is. They work everywhere.';
+    const match = (await matcher)(q);
+    if (match && match.confidence >= CONFIDENT) {
+      const { a, url, link } = match.card;
+      say(a, 'bot', url && link ? { links: [{ label: link, url }] } : undefined);
       return;
     }
-    if (!confirm('Download the on-device language model (about 300 MB)? It is cached for next time.')) return;
-    $('[data-ask-wake-row]').hidden = true;
-    progress.hidden = false;
+
+    const thinking = say('Thinking…', 'bot');
+    thinking.classList.add('is-thinking');
     try {
-      await loadLLM((f, text) => setProgress(f, text.replace(/\[[^\]]*]\s*/g, '').slice(0, 80)));
-      mode = 'ai';
-      say('AI is awake. Answers are written by a small model on your device from this website’s content, so double-check important details.', 'bot');
+      if (!cloudAvailable) throw new Error('offline');
+      const { answer, sources } = await askCloud(q);
+      thinking.remove();
+      say(answer, 'bot', { links: sources.map((s) => ({ label: s.title, url: s.url })), note: 'Answered by Google Gemini from this website’s pages.' });
     } catch {
-      $('[data-ask-wake-row]').hidden = false;
-      say('The AI model could not start on this device. Quick answers still work.', 'bot');
-    } finally {
-      progress.hidden = true;
-      input.focus();
+      thinking.remove();
+      // Last resort: point to the closest page.
+      const [hit] = keywordSearch(await loadIndex(base), q, 1);
+      if (match && match.confidence >= 0.3) say(match.card.a, 'bot', match.card.url && match.card.link ? { links: [{ label: match.card.link, url: match.card.url }] } : undefined);
+      else if (hit) say('I’m not sure, but this page looks related:', 'bot', { links: [{ label: hit.title, url: hit.url }] });
+      else say('I don’t know that one. The committee can help: use the Contact page.', 'bot', { links: [{ label: 'Contact', url: '/contact/' }] });
     }
   });
 

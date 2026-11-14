@@ -4,7 +4,7 @@ Read `README.md` for how the site works and `DETAILS.md` for the original brief 
 
 ## Ground rules
 - $0 only: no paid services and nothing that requires a card.
-- Fast first: static Astro pages; AI features load on demand via dynamic `import()`. Home page first-load JS is ~9 KB gzipped; keep it under 100 KB.
+- Fast first: static Astro pages; heavy features (3D landscape, Ask CIS) load on demand via dynamic `import()`. Home page first-load JS is ~9 KB gzipped; keep it under 100 KB.
 - All content lives in `src/content` (editable through the CMS at `/admin`). Never hard-code content in components. When adding a content field, update both `src/content.config.ts` and `public/admin/config.yml`.
 - Each feature is self-contained in `src/features/<name>/`.
 - TypeScript strict; `npm run check` and `npm test` must pass.

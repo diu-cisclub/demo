@@ -1,10 +1,10 @@
 # DIU CIS Club website
 
-The website of the Daffodil International University Computing & Information System Club. It is a static Astro site that costs nothing to run. The AI features run in the visitor's browser, and join requests are end-to-end encrypted.
+The website of the Daffodil International University Computing & Information System Club. It is a static Astro site that costs nothing to run, and join requests are end-to-end encrypted.
 
 - **Live neural network** on the home page: draw a digit and watch a 64→16→12→10 network read it (`src/features/neural-hero`).
-- **Ask CIS**, an assistant that runs on the visitor's device. Quick answers use a 23 MB embedding model; "Wake the AI" loads a 0.5B language model on WebGPU (`src/features/ask-cis`).
-- **Event map**: events placed by latent semantic analysis of their write-ups, computed at build time (`src/features/latent-map`).
+- **Ask CIS**, an assistant. Common questions are answered instantly on the device from ready-made answers written from the content at build time (`src/lib/answers.ts`). Anything else goes to a small Supabase Edge Function that answers with Google Gemini (free tier) from the site's pages (`src/features/ask-cis`, `supabase/functions/ask`).
+- **Event landscape**: a 3D topographic model (three.js). Events are placed by latent semantic analysis of their write-ups, similar events form hills, and a timeline grows it from 2023 to today (`src/features/latent-map`).
 - **Join form** with every Bangladeshi payment method, optional AI puzzles, and end-to-end encryption (`src/features/secure-forms`, `src/features/join-puzzle`).
 - **⌘K / Ctrl+K search** (`src/features/site-search`).
 - **Content editor** at `/admin` (Sveltia CMS) and a **committee inbox** at `/admin/inbox`.
@@ -80,6 +80,15 @@ The forms open after the next deploy. At first sign-in, each admin scans a QR co
 
 > **Back up the key file and passphrase.** Store them separately, for example the file in the committee's shared drive and the passphrase in a password manager. If both are lost, existing requests can never be decrypted. That is the point of the encryption.
 
+## Ask CIS cloud fallback (one time)
+
+Built-in answers work without this. To also answer unusual questions:
+
+1. Create a free API key at [Google AI Studio](https://aistudio.google.com/apikey) (no card needed).
+2. In Supabase → **Edge Functions** → **Deploy a new function** → **Via Editor**: name it `ask`, paste [supabase/functions/ask/index.ts](supabase/functions/ask/index.ts), and deploy.
+3. In the function's **Settings**, turn **off** "Verify JWT". Visitors aren't signed in; the function checks the origin and rate-limits instead.
+4. In **Edge Functions → Secrets**, add `GEMINI_API_KEY` with the key. Optional: `GEMINI_MODEL` (default `gemini-3.5-flash-lite`).
+
 ## Deploy (GitHub Pages)
 
 1. Push this folder to a GitHub repository. In `public/admin/config.yml`, replace `OWNER/REPO` with that repository.
@@ -101,11 +110,12 @@ The forms open after the next deploy. At first sign-in, each admin scans a QR co
 | Stolen admin password | Reading requires two-factor sign-in (`aal2`) **and** the `club_role` mark, which users can't set themselves. Decrypting also needs the key file and its passphrase. |
 | Spam and floods | Each submission needs a fresh proof of work (about a second of the visitor's CPU), checked and used once by the database. There's a global cap of 300 per hour and 20,000 rows in total. A hidden honeypot field catches bots. No IP addresses are stored. |
 | Malicious content in submissions (XSS) | The inbox renders submissions as text only, never HTML. CSV exports neutralise spreadsheet formulas. |
-| Injected or third-party scripts | A strict Content-Security-Policy with hashed inline scripts. No CDN scripts: everything, including the AI runtime, is served from the site. |
+| Injected or third-party scripts | A strict Content-Security-Policy with hashed inline scripts. No CDN scripts: everything is served from the site. Pages may only connect to the site itself and the club's Supabase project. |
 | Clickjacking the inbox | The inbox refuses to render inside a frame. |
 | Tampered public key (someone with CMS access swaps it) | The inbox warns when the unlocked key doesn't match the site's public key. Every change is in Git history. |
 | Vulnerable or hijacked dependencies | Exact version pins with a lockfile, `npm ci`, Dependabot updates, and minimal workflow permissions. |
-| Tracking | No analytics, cookies or third-party requests. AI models download only after the visitor agrees. |
+| Tracking | No analytics, cookies or third-party requests from the browser. Ask CIS's cloud fallback stores neither questions nor IPs (Google may use free-tier requests to improve its products; the panel says so). |
+| Abuse of the Ask CIS function | Only the site's own origin may call it; per-IP and global rate limits; 300-character questions; it answers only from the site's own pages, so it can't be used as a free general AI. The free tier can't bill anyone. |
 
 Limitations to know about:
 - The puzzle badge is self-reported.

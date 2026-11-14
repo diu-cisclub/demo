@@ -1,7 +1,6 @@
 /**
  * Keyword search over /search-index.json. Fast and dependency-free.
- * If the visitor already woke up Ask CIS's embedding model, results are
- * re-ranked by meaning as well (see rerank in ask-cis/retrieval.ts).
+ * Used by the ⌘K palette and as Ask CIS's last-resort fallback.
  */
 import type { SearchDoc } from '../../lib/search-docs';
 
