@@ -1,0 +1,99 @@
+---
+/**
+ * Every page renders inside this layout: <head> metadata, header, footer and
+ * the two site-wide tools (⌘K search and Ask CIS), which load their code only
+ * when opened.
+ */
+import '@fontsource-variable/bricolage-grotesque/standard.css';
+import '@fontsource-variable/anek-bangla/wght.css';
+import fontUrl from '@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-standard-normal.woff2?url';
+import '../styles/tokens.css';
+import '../styles/base.css';
+import { getImage } from 'astro:assets';
+import logo from '../assets/brand/logo.jpg';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import SearchPalette from '../features/site-search/SearchPalette.astro';
+import AskCis from '../features/ask-cis/AskCis.astro';
+import { getSettings } from '../lib/content';
+import { withBase } from '../lib/url';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Absolute or imported image for link previews. Defaults to the logo. */
+  image?: ImageMetadata | undefined;
+  /** Pages that must not be indexed (admin tools). */
+  noindex?: boolean;
+  /** Hide the site chrome (header/footer/tools), e.g. on the admin inbox. */
+  bare?: boolean;
+}
+
+const site = await getSettings('site');
+const { title, description = site.description, image = logo, noindex = false, bare = false } = Astro.props;
+const pageTitle = title ? `${title} | ${site.name}` : `${site.name}: ${site.motto}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = await getImage({ src: image, width: 1200, format: 'jpg' });
+const favicon = await getImage({ src: logo, width: 96, height: 96, format: 'png' });
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta name="theme-color" content="#f1eae2" />
+    <link rel="icon" href={withBase('/favicon.svg')} type="image/svg+xml" />
+    <link rel="icon" href={favicon.src} type="image/png" sizes="96x96" />
+    <link rel="preload" href={fontUrl} as="font" type="font/woff2" crossorigin />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(ogImage.src, Astro.site)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    {!bare && <Header />}
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    {
+      !bare && (
+        <>
+          <Footer />
+          <SearchPalette />
+          <AskCis />
+        </>
+      )
+    }
+  </body>
+</html>
+
+<style>
+  .skip-link {
+    position: absolute;
+    left: var(--space-4);
+    top: -100px;
+    z-index: var(--z-dialog);
+    padding: var(--space-2) var(--space-4);
+    background: var(--ink);
+    color: var(--on-ink);
+    font-weight: 600;
+  }
+  .skip-link:focus {
+    top: var(--space-4);
+  }
+  main:focus {
+    outline: none;
+  }
+</style>

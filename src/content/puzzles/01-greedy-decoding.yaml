@@ -1,0 +1,10 @@
+title: Pick the next token
+question: 'A language model scores three possible next tokens with logits cat = 2.0, dog = 1.0, fish = 0.5. With greedy decoding, which token is chosen?'
+options:
+  - { id: cat, label: cat }
+  - { id: dog, label: dog }
+  - { id: fish, label: fish }
+  - { id: random, label: It's random each time }
+answer: cat
+explanation: Greedy decoding always takes the highest-scoring token. Softmax keeps the order of logits, so "cat" wins every time. Randomness only enters with sampling, and a higher temperature flattens the probabilities so "dog" and "fish" get picked more often.
+order: 1

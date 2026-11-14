@@ -1,0 +1,223 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PersonCard from '../components/PersonCard.astro';
+import { getCommittees, getSettings } from '../lib/content';
+
+const [about, site, { advisors, current, past }] = await Promise.all([getSettings('about'), getSettings('site'), getCommittees()]);
+---
+
+<BaseLayout title="About" description={about.intro}>
+  <header class="container head">
+    <h1>About the club</h1>
+    <p class="lead">{about.intro}</p>
+  </header>
+
+  <section class="container" aria-labelledby="mission-title">
+    <div class="mission">
+    <h2 id="mission-title">Why we exist</h2>
+    <p>{about.mission}</p>
+    <p class="motto">{site.motto}</p>
+    </div>
+  </section>
+
+  <section class="container section" aria-labelledby="story-title">
+    <h2 id="story-title">The story so far</h2>
+    <ol class="timeline">
+      {
+        about.timeline.map((t) => (
+          <li>
+            <span class="when tabular">{t.date}</span>
+            <p>{t.text}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+
+  <section class="container section" id="committee" aria-labelledby="committee-title">
+    <h2 id="committee-title">Committee</h2>
+
+    {
+      advisors && (
+        <div class="group">
+          <h3>{advisors.data.name}</h3>
+          <ul class="people">
+            {advisors.data.members.map((m) => (
+              <PersonCard {...m} />
+            ))}
+          </ul>
+        </div>
+      )
+    }
+
+    {
+      current && (
+        <div class="group">
+          <h3>
+            {current.data.name} <span class="term tabular">{current.data.term}</span>
+          </h3>
+          {current.data.summary && <p class="muted">{current.data.summary}</p>}
+          <ul class="people">
+            {current.data.members.map((m) => (
+              <PersonCard {...m} />
+            ))}
+          </ul>
+        </div>
+      )
+    }
+
+    {
+      past.length > 0 && (
+        <div class="group">
+          <h3>Past committees</h3>
+          <div class="past">
+            {past.map((c) => (
+              <section class="past-item">
+                <h4>
+                  {c.data.name} <span class="term tabular">{c.data.term}</span>
+                </h4>
+                {c.data.summary && <p class="muted">{c.data.summary}</p>}
+                {c.data.members.length > 0 ? (
+                  <ul class="people people--small">
+                    {c.data.members.map((m) => (
+                      <PersonCard {...m} size="small" />
+                    ))}
+                  </ul>
+                ) : (
+                  <p class="muted">Member list coming soon.</p>
+                )}
+              </section>
+            ))}
+          </div>
+        </div>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<style>
+  .head {
+    padding-block: var(--space-7) var(--space-6);
+  }
+  .head .lead {
+    margin-top: var(--space-4);
+  }
+  .mission {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--space-5) var(--space-8);
+    padding-block: var(--space-6);
+    border-top: 1.5px solid var(--ink);
+  }
+  .mission p {
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    max-width: 60ch;
+  }
+  .mission .motto {
+    grid-column: 2;
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    font-stretch: 85%;
+    color: var(--signal);
+  }
+
+  /* The timeline is a trace from the logo: a line with nodes. */
+  .timeline {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-6);
+    max-width: 52rem;
+  }
+  .timeline li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    gap: var(--space-5);
+    padding: 0 0 var(--space-5) 1.75rem;
+  }
+  .timeline li::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 0.55em;
+    bottom: -0.55em;
+    width: 1.5px;
+    background: var(--ink);
+  }
+  .timeline li:last-child::before {
+    display: none;
+  }
+  .timeline li::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.3em;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  .timeline li:last-child::after {
+    background: var(--signal);
+  }
+  .when {
+    font-weight: 700;
+  }
+
+  .group {
+    margin-top: var(--space-7);
+  }
+  .group h3 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-4);
+  }
+  .term {
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-left: var(--space-2);
+  }
+  .group > .muted {
+    margin: calc(var(--space-2) * -1) 0 var(--space-5);
+  }
+  .people {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: var(--space-5) var(--space-5);
+  }
+  .past {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: var(--space-6);
+  }
+  .past-item {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--rule);
+  }
+  .past-item h4 {
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-2);
+  }
+  .past-item .muted {
+    margin-bottom: var(--space-4);
+  }
+  .people--small {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+  @media (max-width: 48rem) {
+    .mission,
+    .timeline li {
+      grid-template-columns: 1fr;
+    }
+    .mission .motto {
+      grid-column: 1;
+    }
+    .timeline li {
+      gap: var(--space-1);
+    }
+  }
+</style>

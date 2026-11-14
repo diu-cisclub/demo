@@ -1,0 +1,126 @@
+---
+import LogoMark from './LogoMark.astro';
+import { getSettings } from '../lib/content';
+import { withBase } from '../lib/url';
+
+const site = await getSettings('site');
+const year = new Date().getFullYear();
+const links = [
+  ['/events/', 'Events'],
+  ['/about/', 'About'],
+  ['/join/', 'Join'],
+  ['/gallery/', 'Gallery'],
+  ['/resources/', 'Resources'],
+  ['/contact/', 'Contact'],
+  ['/privacy/', 'Privacy'],
+] as const;
+const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
+---
+
+<footer class="footer">
+  <div class="container grid">
+    <div class="about">
+      <div class="mark"><LogoMark /></div>
+      <p class="motto">{site.motto}</p>
+      <p class="muted">{site.fullName}</p>
+    </div>
+
+    <nav aria-label="Footer">
+      <h2 class="label">Pages</h2>
+      <ul>{links.map(([href, label]) => <li><a href={withBase(href)}>{label}</a></li>)}</ul>
+    </nav>
+
+    <div>
+      <h2 class="label">Contact</h2>
+      <ul>
+        <li><a href={`mailto:${site.email}`}>{site.email}</a></li>
+        {site.phones.map((p) => <li><a href={tel(p)} class="tabular">{p}</a></li>)}
+        <li><a href={site.mapUrl} rel="noopener noreferrer" target="_blank">{site.address}</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="label">Follow</h2>
+      <ul>
+        {site.socials.map((s) => <li><a href={s.url} rel="noopener noreferrer" target="_blank">{s.label}</a></li>)}
+      </ul>
+    </div>
+  </div>
+  <div class="container legal">
+    <p>© {year} {site.name}</p>
+    <p>No trackers, no ads, no cookies. The AI on this site runs on your device.</p>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    margin-top: var(--space-9);
+    padding-block: var(--space-8) var(--space-6);
+    background: var(--ink);
+    color: var(--on-ink);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1.6fr repeat(3, 1fr);
+    gap: var(--space-7) var(--space-6);
+  }
+  .mark {
+    height: 3.5rem;
+    margin-bottom: var(--space-4);
+    /* The mark is drawn in --ink; flip it for the dark footer. */
+    --ink: var(--on-ink);
+  }
+  .motto {
+    font-size: var(--text-xl);
+    font-weight: 750;
+    font-stretch: 88%;
+    letter-spacing: -0.01em;
+  }
+  .muted {
+    margin-top: var(--space-2);
+    color: color-mix(in srgb, var(--on-ink) 70%, transparent);
+    max-width: 34ch;
+    font-size: var(--text-sm);
+  }
+  .label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: color-mix(in srgb, var(--on-ink) 70%, transparent);
+    margin-bottom: var(--space-3);
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  a {
+    text-decoration-color: transparent;
+    overflow-wrap: anywhere;
+  }
+  a:hover {
+    text-decoration-color: var(--on-ink);
+  }
+  a:focus-visible {
+    outline-color: var(--on-ink);
+  }
+  .legal {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-8);
+    padding-top: var(--space-5);
+    border-top: 1px solid color-mix(in srgb, var(--on-ink) 18%, transparent);
+    font-size: var(--text-sm);
+    color: color-mix(in srgb, var(--on-ink) 70%, transparent);
+  }
+  @media (max-width: 52rem) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .about {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

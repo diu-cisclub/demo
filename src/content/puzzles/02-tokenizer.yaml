@@ -1,0 +1,10 @@
+title: Count the tokens
+question: 'A simple tokenizer splits text on spaces and also makes every punctuation mark its own token. How many tokens is: "AI is fun, right?"'
+options:
+  - { id: four, label: '4' }
+  - { id: five, label: '5' }
+  - { id: six, label: '6' }
+  - { id: seven, label: '7' }
+answer: six
+explanation: 'The tokens are AI · is · fun · , · right · ? — four words and two punctuation marks, six in total.'
+order: 2

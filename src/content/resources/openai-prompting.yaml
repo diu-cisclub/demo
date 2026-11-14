@@ -1,0 +1,5 @@
+title: "Prompt engineering guide (OpenAI)"
+url: "https://platform.openai.com/docs/guides/prompt-engineering"
+topic: "Prompt engineering"
+description: "Strategies for getting reliable results from large language models."
+order: 30

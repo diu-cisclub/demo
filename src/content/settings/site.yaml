@@ -1,0 +1,20 @@
+name: DIU CIS Club
+fullName: Daffodil International University Computing and Information System Club
+motto: Code. Lead. Inspire.
+description: The student club of DIU's Department of Computing & Information System, built around AI. Competitions, workshops, bootcamps and festivals since 2023.
+founded: 2023-11-26
+followers: 2K
+email: cisclub@diu.edu.bd
+phones:
+  - 01889-822468
+  - +880 1639-507665
+address: Daffodil Smart City, Birulia, Savar, Dhaka 1216
+mapUrl: https://www.google.com/maps/search/?api=1&query=Daffodil+Smart+City+Birulia+Savar+Dhaka
+socials:
+  - label: Facebook
+    url: https://www.facebook.com/diucisclub
+  - label: DIU StudentsHub
+    url: https://studentshub.daffodilvarsity.edu.bd/club/57/home
+# Paste the public key from /admin/inbox → "Encryption key" here.
+# Until it is set, the join and contact forms stay closed.
+inboxPublicKey: ''

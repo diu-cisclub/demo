@@ -1,0 +1,179 @@
+/* Shared form styles for the join and contact forms. */
+.form {
+  display: grid;
+  gap: var(--space-6);
+}
+.form fieldset {
+  border: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.form legend {
+  padding: 0;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.step {
+  color: var(--signal);
+  font-variant-numeric: tabular-nums;
+  margin-right: var(--space-2);
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.field {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+}
+.field--wide {
+  grid-column: 1 / -1;
+}
+.field > span:first-child,
+.field-label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.optional {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.hint {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+.form input:not([type='checkbox'], [type='radio']),
+.form select,
+.form textarea {
+  width: 100%;
+  min-height: 2.875rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  font-size: 1rem; /* 16px stops iOS zooming into the field */
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.form textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+.form input:hover,
+.form select:hover,
+.form textarea:hover {
+  border-color: var(--ink-faint);
+}
+.form input:focus-visible,
+.form select:focus-visible,
+.form textarea:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 0;
+  border-color: var(--signal);
+}
+.form input:user-invalid,
+.form textarea:user-invalid,
+.form select:user-invalid {
+  border-color: var(--signal);
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.check:has(input:checked) {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.check input {
+  accent-color: var(--signal);
+}
+.consent {
+  display: flex;
+  gap: var(--space-3);
+  align-items: start;
+  font-size: var(--text-sm);
+}
+.consent input {
+  margin-top: 0.25rem;
+  accent-color: var(--signal);
+}
+/* Honeypot: invisible to people, irresistible to bots. */
+.trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+.form-error {
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--signal);
+  background: var(--signal-wash);
+  font-weight: 500;
+}
+.notice {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--paper-sunk);
+}
+.notice--warn {
+  background: #f3e3c9;
+  color: #4d3208;
+}
+.result {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--paper-raised);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.result:focus {
+  outline: none;
+}
+.result h2 {
+  font-size: var(--text-2xl);
+}
+.secure-note {
+  display: flex;
+  gap: var(--space-2);
+  align-items: start;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+.secure-note svg {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+@media (max-width: 40rem) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+}

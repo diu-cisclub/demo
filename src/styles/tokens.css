@@ -1,0 +1,96 @@
+/*
+ * Design tokens. The palette is sampled from the club logo:
+ * cream paper, charcoal ink, and one crimson "signal" colour.
+ *
+ * Rule of the system: crimson only appears where something is ACTIVE
+ * (a firing neuron, the current page, a live event, a focused control).
+ * To re-brand, change the five colours under "Brand" and nothing else.
+ */
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --paper: #f1eae2; /* logo background */
+  --ink: #313036; /* logo letters */
+  --signal: #a33646; /* logo crimson */
+  --paper-raised: #faf6f1;
+  --paper-sunk: #e7ded3;
+
+  /* Derived */
+  --ink-soft: #5f5a5c; /* secondary text, 5.7:1 on --paper */
+  --ink-faint: #8b8481; /* decorative only, never body text */
+  --rule: #d8cdc1;
+  --signal-strong: #8a2a39; /* signal used as text on raised paper */
+  --signal-wash: rgb(163 54 70 / 0.1);
+  --on-ink: #faf6f1;
+  --success: #2f6b45;
+  --warning: #8a5a12;
+
+  /* Event categories, used only on the latent map and as small keys.
+     Chosen to stay distinguishable from each other and from --signal. */
+  --cat-ai: #a33646;
+  --cat-workshop: #2f5d8c;
+  --cat-win: #a8741a;
+  --cat-partner: #6a4c93;
+  --cat-sports: #3c7a52;
+  --cat-culture: #c0572e;
+  --cat-community: #5f6b73;
+
+  /* Type: one family, Bangla falls back per glyph to Anek Bangla */
+  --font-sans: 'Bricolage Grotesque Variable', 'Anek Bangla Variable', system-ui, sans-serif;
+
+  --text-xs: 0.8125rem; /* 13 */
+  --text-sm: 0.875rem; /* 14 */
+  --text-base: 1.0625rem; /* 17 */
+  --text-lg: 1.25rem; /* 20 */
+  --text-xl: 1.625rem; /* 26 */
+  --text-2xl: clamp(1.875rem, 1.4rem + 1.8vw, 2.5rem);
+  --text-3xl: clamp(2.375rem, 1.6rem + 3.4vw, 3.75rem);
+  --text-display: clamp(3rem, 1.6rem + 6.4vw, 6.25rem);
+
+  --leading-tight: 1.05;
+  --leading-heading: 1.2;
+  --leading-body: 1.55;
+
+  /* Space (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --space-9: clamp(3.5rem, 2.5rem + 4vw, 6rem);
+
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+  --page-max: 78rem;
+  --measure: 66ch;
+
+  /* Shape. The chamfer echoes the cut corners of the logo's "C" and "S". */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --cut: 10px;
+  --cut-lg: 22px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 140ms;
+  --dur: 260ms;
+  --dur-slow: 520ms;
+
+  /* Layers */
+  --z-header: 10;
+  --z-overlay: 20;
+  --z-dialog: 30;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+    --dur-slow: 0ms;
+  }
+}

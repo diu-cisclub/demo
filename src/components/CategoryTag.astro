@@ -1,0 +1,35 @@
+---
+/** A small coloured key + label for an event category. */
+import type { EventCategory } from '../content.config';
+import { categoryVar } from '../lib/categories';
+
+interface Props {
+  category: EventCategory;
+}
+const { category } = Astro.props;
+---
+
+<span class:list={['tag', `tag--${categoryVar(category)}`]}>{category}</span>
+
+<style>
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    white-space: nowrap;
+  }
+  .tag::before {
+    content: '';
+    width: 0.55em;
+    height: 0.55em;
+    transform: rotate(45deg);
+    background: var(--tag-color, var(--ink-soft));
+  }
+  .tag--ai { --tag-color: var(--cat-ai); }
+  .tag--workshop { --tag-color: var(--cat-workshop); }
+  .tag--win { --tag-color: var(--cat-win); }
+  .tag--partner { --tag-color: var(--cat-partner); }
+  .tag--sports { --tag-color: var(--cat-sports); }
+  .tag--culture { --tag-color: var(--cat-culture); }
+  .tag--community { --tag-color: var(--cat-community); }
+</style>

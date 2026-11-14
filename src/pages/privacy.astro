@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getSettings } from '../lib/content';
+
+const site = await getSettings('site');
+---
+
+<BaseLayout title="Privacy" description="What DIU CIS Club collects, how it is protected, and how to have it deleted.">
+  <article class="container prose page">
+    <h1>Privacy notice</h1>
+    <p class="lead">Short version: we collect only what we need to run membership, it is encrypted before it leaves your device, and only the committee can read it.</p>
+
+    <h2>Browsing this site</h2>
+    <p>No analytics, no ads, no tracking pixels and no cookies. Pages are static files. Fonts and scripts are served from this site, not from third parties.</p>
+
+    <h2>The AI features</h2>
+    <p>The digit-reading network runs entirely in your browser; nothing you draw is sent anywhere. The Ask CIS assistant also runs on your device. If you choose to start it, your browser downloads an open model from Hugging Face (and, for the larger model, its program files from GitHub). Your questions never leave your device.</p>
+
+    <h2>Join requests and messages</h2>
+    <ul>
+      <li><strong>What we collect:</strong> what you type in the form. For join requests that is your name, student ID, department, batch, email, phone, interests, an optional note, your payment method and, if you paid online, the transaction ID.</li>
+      <li><strong>How it is protected:</strong> your browser encrypts the form with the committee’s public key before sending it. The database only stores the encrypted text, plus the request type, payment method name, puzzle badge and status. Without the committee’s private key, which never leaves committee members’ devices, nobody can read it, including our database provider.</li>
+      <li><strong>Who can read it:</strong> committee admins who sign in with a password and a second factor and hold the private key.</li>
+      <li><strong>What we don’t store:</strong> your IP address, device or location. (Our database provider’s network may keep short-lived technical logs.)</li>
+      <li><strong>How long:</strong> until your request is handled and for at most a year after, unless you ask us to delete it sooner.</li>
+    </ul>
+
+    <h2>Your choices</h2>
+    <p>To see, correct or delete what you sent, email <a href={`mailto:${site.email}`}>{site.email}</a> from the address you used.</p>
+  </article>
+</BaseLayout>
+
+<style>
+  .page {
+    padding-top: var(--space-7);
+  }
+  .lead {
+    margin-top: var(--space-4);
+  }
+</style>

@@ -1,0 +1,72 @@
+---
+/** Generated from event photos: upload photos to an event once and they appear here too. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PhotoGrid from '../components/PhotoGrid.astro';
+import Lightbox from '../components/Lightbox.astro';
+import { eventUrl, getEvents } from '../lib/content';
+import { formatEventDate } from '../lib/dates';
+import { withBase } from '../lib/url';
+
+const events = (await getEvents()).filter((e) => e.data.photos.length > 0);
+const total = events.reduce((n, e) => n + e.data.photos.length, 0);
+---
+
+<BaseLayout title="Gallery" description="Photos from DIU CIS Club events, contests and festivals.">
+  <header class="container head">
+    <h1>Gallery</h1>
+    <p class="lead tabular">{total} photos from {events.length} events. Select a photo to see it larger.</p>
+  </header>
+
+  <div class="container">
+    {
+      events.map((e) => (
+        <section class="album" aria-labelledby={`g-${e.id}`}>
+          <div class="album-head">
+            <h2 id={`g-${e.id}`}>
+              <a href={withBase(eventUrl(e))}>{e.data.title}</a>
+            </h2>
+            <p class="muted tabular">{formatEventDate(e.data)}</p>
+          </div>
+          <PhotoGrid photos={e.data.photos} title={e.data.title} group={e.id} />
+        </section>
+      ))
+    }
+  </div>
+  <Lightbox />
+</BaseLayout>
+
+<style>
+  .head {
+    padding-block: var(--space-7) var(--space-6);
+  }
+  .head .lead {
+    margin-top: var(--space-4);
+  }
+  .album {
+    display: grid;
+    grid-template-columns: 16rem 1fr;
+    gap: var(--space-5);
+    padding-block: var(--space-5);
+    border-top: 1px solid var(--rule);
+  }
+  .album h2 {
+    font-size: var(--text-lg);
+  }
+  .album h2 a {
+    text-decoration: none;
+  }
+  .album h2 a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--signal);
+  }
+  .album-head .muted {
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+  }
+  @media (max-width: 48rem) {
+    .album {
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+  }
+</style>

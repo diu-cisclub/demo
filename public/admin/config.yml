@@ -1,0 +1,231 @@
+# Sveltia CMS configuration: the forms at /admin.
+# Every save is a commit to the GitHub repository; the site rebuilds itself
+# about a minute later. Field names here must match src/content.config.ts.
+#
+
+backend:
+  name: github
+  repo: diu-cis-club/diu-cis-club.github.io
+  branch: main
+
+# Default for uploads that don't belong to an event or committee.
+media_folder: public/uploads
+public_folder: /uploads
+
+slug:
+  encoding: ascii
+
+collections:
+  # ── Events ──────────────────────────────────────────────────────────────
+  - name: events
+    label: Events
+    label_singular: Event
+    description: Every event, past and upcoming. Photos added here also appear in the gallery.
+    folder: src/content/events
+    path: '{{slug}}/index'
+    media_folder: ''
+    public_folder: ''
+    extension: md
+    format: frontmatter
+    create: true
+    slug: '{{title}}'
+    summary: "{{date | date('YYYY-MM-DD')}}  {{title}}"
+    sortable_fields: [date, title, category]
+    view_filters:
+      - { label: Wins, field: category, pattern: Competitions & Wins }
+      - { label: AI & Tech, field: category, pattern: AI & Tech }
+    fields:
+      - { name: title, label: Title, widget: string }
+      - { name: titleBn, label: Title in Bangla, widget: string, required: false }
+      - { name: date, label: Date, widget: datetime, time_format: false, format: YYYY-MM-DD }
+      - { name: endDate, label: End date (multi-day events), widget: datetime, time_format: false, format: YYYY-MM-DD, required: false }
+      - { name: approximate, label: Only the month is known, widget: boolean, default: false, hint: Shows the date as "Dec 2025" instead of a day. }
+      - { name: time, label: Time, widget: string, required: false, hint: 'e.g. 9:00 AM or 2:45 – 4:00 PM' }
+      - { name: venue, label: Venue, widget: string, required: false }
+      - name: category
+        label: Category
+        widget: select
+        options: [AI & Tech, Workshops & Seminars, Competitions & Wins, Partnerships, Sports, Culture & Festivals, Community & Orientation]
+      - { name: summary, label: One-line summary, widget: text, hint: At most 260 characters. Shown on cards and in search. }
+      - { name: result, label: Result (wins only), widget: string, required: false, hint: 'Fill this in for a win (for example Silver medal). It then appears under Recent wins on the home page.' }
+      - { name: featured, label: Featured, widget: boolean, default: false }
+      - { name: registrationUrl, label: Registration link, widget: string, required: false, pattern: ['^https://', 'Must start with https://'] }
+      - name: photos
+        label: Photos
+        widget: list
+        required: false
+        hint: The first photo is the cover. Photos are resized automatically.
+        field: { name: photo, label: Photo, widget: image }
+      - { name: body, label: Write-up, widget: markdown }
+
+  # ── People ──────────────────────────────────────────────────────────────
+  - name: committees
+    label: Committees
+    label_singular: Committee
+    description: The advisor panel and each year's executive committee. For a new committee, add a new entry with a higher "Order".
+    folder: src/content/committees
+    extension: yaml
+    format: yaml
+    create: true
+    slug: '{{term}}-{{name}}'
+    media_folder: photos
+    public_folder: photos
+    summary: '{{name}} ({{term}})'
+    sortable_fields: [order, name]
+    fields:
+      - { name: name, label: Name, widget: string, hint: 'e.g. 4th Executive Committee' }
+      - { name: term, label: Term, widget: string, hint: 'e.g. 2027' }
+      - { name: order, label: Order, widget: number, value_type: int, hint: Newest committee gets the highest number. The highest executive committee is shown as current. }
+      - { name: kind, label: Type, widget: select, options: [{ label: Executive committee, value: executive }, { label: Advisor panel, value: advisors }], default: executive }
+      - { name: summary, label: Short description, widget: text, required: false }
+      - name: members
+        label: Members
+        widget: list
+        summary: '{{fields.name}}: {{fields.role}}'
+        fields:
+          - { name: name, label: Name, widget: string }
+          - { name: role, label: Role, widget: string }
+          - { name: photo, label: Portrait (optional), widget: image, required: false, hint: Square photos work best. Initials are shown when empty. }
+
+  # ── Learning ────────────────────────────────────────────────────────────
+  - name: resources
+    label: Resources
+    label_singular: Resource
+    folder: src/content/resources
+    extension: yaml
+    format: yaml
+    create: true
+    slug: '{{title}}'
+    summary: '{{topic}}: {{title}}'
+    sortable_fields: [topic, order, title]
+    fields:
+      - { name: title, label: Title, widget: string }
+      - { name: url, label: Link, widget: string, pattern: ['^https://', 'Must start with https://'] }
+      - { name: topic, label: Topic, widget: string, hint: 'Resources with the same topic are grouped together, for example Machine learning.' }
+      - { name: description, label: Description, widget: text }
+      - { name: order, label: Order within topic, widget: number, value_type: int, default: 100 }
+
+  - name: puzzles
+    label: Join puzzles
+    label_singular: Puzzle
+    description: The optional AI puzzles on the join form. Change them each semester.
+    folder: src/content/puzzles
+    extension: yaml
+    format: yaml
+    create: true
+    slug: '{{order}}-{{title}}'
+    sortable_fields: [order]
+    fields:
+      - { name: title, label: Title, widget: string }
+      - { name: question, label: Question, widget: text }
+      - name: options
+        label: Options
+        widget: list
+        summary: '{{fields.id}}: {{fields.label}}'
+        fields:
+          - { name: id, label: Short id, widget: string, pattern: ['^[a-z0-9-]{1,32}$', 'Lowercase letters, digits and dashes'] }
+          - { name: label, label: Text shown, widget: string }
+      - { name: answer, label: Correct option id, widget: string, hint: Must match the short id of one option. It is hashed before publishing. }
+      - { name: explanation, label: Explanation shown after a correct answer, widget: text }
+      - { name: order, label: Order, widget: number, value_type: int, default: 1 }
+
+  # ── Settings ────────────────────────────────────────────────────────────
+  - name: settings
+    label: Settings
+    editor: { preview: false }
+    files:
+      - name: site
+        label: Site
+        file: src/content/settings/site.yaml
+        fields:
+          - { name: name, label: Short name, widget: string }
+          - { name: fullName, label: Full name, widget: string }
+          - { name: motto, label: Motto, widget: string }
+          - { name: description, label: Description for search engines, widget: text, hint: At most 200 characters. }
+          - { name: founded, label: Founded, widget: datetime, time_format: false, format: YYYY-MM-DD }
+          - { name: followers, label: Facebook followers (shown on home), widget: string }
+          - { name: email, label: Email, widget: string }
+          - { name: phones, label: Phone numbers, widget: list, field: { name: phone, label: Phone, widget: string } }
+          - { name: address, label: Address, widget: string }
+          - { name: mapUrl, label: Map link, widget: string }
+          - name: socials
+            label: Social links
+            widget: list
+            fields:
+              - { name: label, label: Name, widget: string }
+              - { name: url, label: Link, widget: string, pattern: ['^https://', 'Must start with https://'] }
+          - name: inboxPublicKey
+            label: Inbox public key
+            widget: text
+            required: false
+            hint: Paste the public key created at /admin/inbox → "No key yet? Create one". The join and contact forms stay closed until this is set. Never paste the key file itself here.
+
+      - name: home
+        label: Home page
+        file: src/content/settings/home.yaml
+        fields:
+          - { name: heroTitle, label: Headline, widget: string }
+          - { name: heroLead, label: Intro sentence, widget: text }
+          - { name: networkCaption, label: Neural network caption, widget: text }
+          - { name: aboutBlurb, label: About paragraph, widget: text }
+          - { name: joinTitle, label: Join box headline, widget: string }
+          - { name: joinText, label: Join box text, widget: text }
+
+      - name: about
+        label: About page
+        file: src/content/settings/about.yaml
+        fields:
+          - { name: intro, label: Intro, widget: text }
+          - { name: mission, label: Mission, widget: text }
+          - name: timeline
+            label: Timeline
+            widget: list
+            summary: '{{fields.date}}: {{fields.text}}'
+            fields:
+              - { name: date, label: When, widget: string, hint: 'e.g. 22 Dec 2023 or Mar 2024' }
+              - { name: text, label: What happened, widget: text }
+
+      - name: join
+        label: Join page and payments
+        file: src/content/settings/join.yaml
+        fields:
+          - { name: intro, label: Intro, widget: text }
+          - { name: fee, label: Fee (৳), widget: number, value_type: int }
+          - { name: feeNote, label: Fee note, widget: string }
+          - { name: benefits, label: What members get, widget: list, field: { name: benefit, label: Benefit, widget: string } }
+          - { name: interests, label: Interest options on the form, widget: list, field: { name: interest, label: Interest, widget: string } }
+          - name: paymentMethods
+            label: Payment methods
+            widget: list
+            summary: '{{fields.name}} ({{fields.details}})'
+            hint: >-
+              Every method listed here appears on the join form. A method becomes payable as soon as "Account number or where to pay"
+              is filled in. Until then, members who pick it are told their request is pending and to pay a club member in person.
+              Only enter the club's official accounts.
+            fields:
+              - { name: id, label: Short id, widget: string, pattern: ['^[a-z0-9-]{1,32}$', 'Lowercase letters, digits and dashes'], hint: 'e.g. bkash' }
+              - { name: name, label: Name, widget: string }
+              - { name: nameBn, label: Name in Bangla, widget: string, required: false }
+              - { name: kind, label: Type, widget: select, options: [{ label: Mobile wallet, value: mobile }, { label: Bank, value: bank }, { label: Cash in person, value: cash }] }
+              - { name: enabled, label: Show on the join form, widget: boolean, default: true }
+              - { name: details, label: Account number or where to pay, widget: string, required: false, hint: 'Mobile: wallet number. Bank: account number and bank/branch. Cash: who and where to pay.' }
+              - { name: accountName, label: Account name, widget: string, required: false }
+              - { name: accountType, label: Account type, widget: string, required: false, hint: 'e.g. Send Money (personal) or Payment (merchant)' }
+              - { name: instructions, label: Extra instructions, widget: text, required: false }
+          - { name: unregisteredNotice, label: Message when a method is not set up, widget: text }
+          - { name: successPaid, label: Message after sending with a transaction ID, widget: text }
+          - { name: successPending, label: Message after sending without payment, widget: text }
+
+      - name: contact
+        label: Contact page
+        file: src/content/settings/contact.yaml
+        fields:
+          - { name: intro, label: Intro, widget: text }
+          - { name: topics, label: Message topics, widget: list, field: { name: topic, label: Topic, widget: string } }
+          - name: faq
+            label: Questions and answers
+            widget: list
+            summary: '{{fields.question}}'
+            fields:
+              - { name: question, label: Question, widget: string }
+              - { name: answer, label: Answer, widget: text }

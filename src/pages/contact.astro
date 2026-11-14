@@ -1,0 +1,122 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactForm from '../features/secure-forms/ContactForm.astro';
+import { getSettings } from '../lib/content';
+
+const [contact, site] = await Promise.all([getSettings('contact'), getSettings('site')]);
+const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
+---
+
+<BaseLayout title="Contact" description={contact.intro}>
+  <div class="container layout">
+    <div>
+      <h1>Contact</h1>
+      <p class="lead">{contact.intro}</p>
+      <div class="form-wrap">
+        <ContactForm />
+      </div>
+    </div>
+
+    <aside class="side">
+      <section aria-labelledby="direct-title">
+        <h2 id="direct-title">Reach us directly</h2>
+        <dl class="direct">
+          <div><dt>Email</dt><dd><a href={`mailto:${site.email}`}>{site.email}</a></dd></div>
+          <div>
+            <dt>Phone</dt>
+            <dd>{site.phones.map((p) => <a class="tabular" href={tel(p)}>{p}</a>)}</dd>
+          </div>
+          <div>
+            <dt>Find us</dt>
+            <dd><a href={site.mapUrl} rel="noopener noreferrer" target="_blank">{site.address}</a></dd>
+          </div>
+          <div>
+            <dt>Online</dt>
+            <dd>{site.socials.map((s) => <a href={s.url} rel="noopener noreferrer" target="_blank">{s.label}</a>)}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="faq-title">
+        <h2 id="faq-title">Common questions</h2>
+        <div class="faq">
+          {
+            contact.faq.map((f) => (
+              <details>
+                <summary>{f.question}</summary>
+                <p>{f.answer}</p>
+              </details>
+            ))
+          }
+        </div>
+      </section>
+    </aside>
+  </div>
+</BaseLayout>
+
+<style>
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: var(--space-8);
+    padding-top: var(--space-7);
+    align-items: start;
+  }
+  .lead {
+    margin-top: var(--space-4);
+  }
+  .form-wrap {
+    margin-top: var(--space-6);
+  }
+  .side {
+    display: grid;
+    gap: var(--space-7);
+  }
+  .side h2 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-4);
+  }
+  .direct {
+    display: grid;
+    gap: var(--space-3);
+    border-top: 1.5px solid var(--ink);
+    padding-top: var(--space-4);
+  }
+  .direct div {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: var(--space-3);
+  }
+  dt {
+    color: var(--ink-soft);
+  }
+  dd {
+    display: grid;
+    gap: var(--space-1);
+    overflow-wrap: anywhere;
+  }
+  .faq {
+    border-top: 1.5px solid var(--ink);
+  }
+  details {
+    border-bottom: 1px solid var(--rule);
+  }
+  summary {
+    padding-block: var(--space-3);
+    font-weight: 600;
+    cursor: pointer;
+    list-style-position: outside;
+  }
+  summary::marker {
+    color: var(--signal);
+  }
+  details p {
+    padding-bottom: var(--space-4);
+    color: var(--ink-soft);
+  }
+  @media (max-width: 56rem) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

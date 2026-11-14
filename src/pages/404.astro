@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { withBase } from '../lib/url';
+---
+
+<BaseLayout title="Page not found" noindex>
+  <section class="container page">
+    <p class="code tabular" aria-hidden="true">404</p>
+    <h1>This page doesn’t exist</h1>
+    <p class="lead">It may have moved, or the link has a typo. Try the search (Ctrl K) or start from one of these.</p>
+    <p class="links">
+      <a class="button" href={withBase('/')}>Home</a>
+      <a class="button button--quiet" href={withBase('/events/')}>Events</a>
+    </p>
+  </section>
+</BaseLayout>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-4);
+    padding-block: var(--space-9);
+  }
+  .code {
+    font-size: var(--text-display);
+    font-weight: 800;
+    font-stretch: 80%;
+    line-height: 1;
+    color: var(--signal);
+  }
+  .links {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+</style>

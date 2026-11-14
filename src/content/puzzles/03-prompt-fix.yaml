@@ -1,0 +1,9 @@
+title: Fix the prompt
+question: You want a model to return exactly three bullet points summarising an article, with nothing else. Which prompt is most likely to do that?
+options:
+  - { id: vague, label: '"Summarize this article."' }
+  - { id: specific, label: '"Summarize this article in exactly 3 bullet points. Output only the bullets, with no introduction."' }
+  - { id: polite, label: '"Could you please give a nice summary of this article for me?"' }
+answer: specific
+explanation: Good prompts state the format and the constraints explicitly. The second prompt says how many bullets to produce and forbids extra text, so there's nothing left for the model to guess.
+order: 3

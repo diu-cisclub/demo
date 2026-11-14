@@ -1,0 +1,158 @@
+---
+/**
+ * Feature D: optional "Prove you think like a model" puzzles on the join form.
+ * Answers are hashed at build time (SHA-256 of puzzle id + option id), so the
+ * correct option never appears in the page as text. It is a fun badge, not a
+ * security control: the result is self-reported with the join request.
+ * Edit puzzles in the CMS (Join puzzles) or src/content/puzzles/.
+ */
+import { createHash } from 'node:crypto';
+import { getCollection } from 'astro:content';
+
+const puzzles = (await getCollection('puzzles')).sort((a, b) => a.data.order - b.data.order);
+const hash = (puzzleId: string, optionId: string) => createHash('sha256').update(`${puzzleId}:${optionId}`).digest('hex');
+---
+
+<fieldset class="puzzle" data-puzzle>
+  <legend><span class="step">3</span>Prove you think like a model <span class="optional">(optional)</span></legend>
+  <p class="hint">Answer all {puzzles.length} correctly and your request gets a <strong>Puzzle solver</strong> badge the committee can see.</p>
+
+  <ol class="questions">
+    {
+      puzzles.map((p, n) => (
+        <li class="question" data-question={p.id} data-answer-hash={hash(p.id, p.data.answer)}>
+          <fieldset>
+            <legend class="q-title">
+              <span class="q-num tabular">{n + 1}.</span> {p.data.title}
+            </legend>
+            <p class="q-text">{p.data.question}</p>
+            <div class="options">
+              {p.data.options.map((o) => (
+                <label class="option">
+                  <input type="radio" name={`puzzle-${p.id}`} value={o.id} />
+                  <span>{o.label}</span>
+                </label>
+              ))}
+            </div>
+            <p class="feedback" aria-live="polite" data-feedback hidden />
+            <p class="explain" data-explain hidden>
+              {p.data.explanation}
+            </p>
+          </fieldset>
+        </li>
+      ))
+    }
+  </ol>
+  <p class="badge" data-badge hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+    Puzzle solver badge added to your request
+  </p>
+  <input type="hidden" name="puzzleSolved" value="false" data-solved />
+</fieldset>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-puzzle]');
+  const sha256Hex = async (text: string) =>
+    [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+  if (root) {
+    const questions = [...root.querySelectorAll<HTMLElement>('[data-question]')];
+    const solved = new Set<string>();
+    root.addEventListener('change', async (e) => {
+      const input = e.target as HTMLInputElement;
+      const q = input.closest<HTMLElement>('[data-question]');
+      if (!q || input.type !== 'radio') return;
+      const ok = (await sha256Hex(`${q.dataset.question}:${input.value}`)) === q.dataset.answerHash;
+      const fb = q.querySelector<HTMLElement>('[data-feedback]')!;
+      fb.hidden = false;
+      fb.textContent = ok ? 'Correct.' : 'Not quite. Try another option.';
+      fb.classList.toggle('is-ok', ok);
+      q.querySelector<HTMLElement>('[data-explain]')!.hidden = !ok;
+      if (ok) solved.add(q.dataset.question!);
+      else solved.delete(q.dataset.question!);
+      const all = solved.size === questions.length;
+      root.querySelector<HTMLElement>('[data-badge]')!.hidden = !all;
+      root.querySelector<HTMLInputElement>('[data-solved]')!.value = String(all);
+    });
+  }
+</script>
+
+<style>
+  .questions {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-5);
+  }
+  .question fieldset {
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5);
+    border-left: 2px solid var(--rule);
+  }
+  .question:has(.is-ok) fieldset {
+    border-left-color: var(--success);
+  }
+  .q-title {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: 700;
+  }
+  .q-num {
+    color: var(--ink-soft);
+  }
+  .options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  .option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.5rem 0.85rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--paper-raised);
+    cursor: pointer;
+  }
+  .option:has(input:checked) {
+    border-color: var(--ink);
+  }
+  .option input {
+    accent-color: var(--signal);
+  }
+  .feedback {
+    font-weight: 600;
+    color: var(--signal-strong);
+  }
+  .feedback.is-ok {
+    color: var(--success);
+  }
+  .explain {
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    max-width: 62ch;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    justify-self: start;
+    padding: var(--space-2) var(--space-4);
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--on-ink);
+    font-weight: 600;
+  }
+  .badge svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+  }
+</style>

@@ -1,0 +1,31 @@
+# build output
+dist/
+.astro/
+
+# dependencies
+node_modules/
+
+# secrets: never commit these
+.env
+.env.*
+!.env.example
+*.key.json
+cis-inbox-key*.json
+
+# copied from node_modules at build time (scripts/copy-vendor.mjs)
+public/admin/sveltia-cms.js
+public/vendor/
+
+# Raw Facebook export: contains birthdays and personal payment numbers, so it must
+# never be pushed to a public repo. Curated photos already live in src/content/events.
+/content/
+/logo.jpg.jpeg
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# test builds
+dist-test/

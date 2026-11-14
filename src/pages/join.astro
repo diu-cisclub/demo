@@ -1,0 +1,72 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import JoinForm from '../features/secure-forms/JoinForm.astro';
+import { getSettings } from '../lib/content';
+
+const join = await getSettings('join');
+---
+
+<BaseLayout title="Join" description={`Become a member of DIU CIS Club. ৳${join.fee}, ${join.feeNote}.`}>
+  <div class="container layout">
+    <aside class="side">
+      <h1>Join the club</h1>
+      <p class="lead">{join.intro}</p>
+      <p class="fee"><span class="amount tabular">৳{join.fee}</span> <span class="muted">{join.feeNote}</span></p>
+      <h2 class="side-title">What members get</h2>
+      <ul class="benefits">{join.benefits.map((b) => <li>{b}</li>)}</ul>
+    </aside>
+    <div class="main">
+      <JoinForm />
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+    gap: var(--space-8);
+    padding-top: var(--space-7);
+    align-items: start;
+  }
+  .side {
+    position: sticky;
+    top: 6rem;
+    display: grid;
+    gap: var(--space-4);
+  }
+  .fee {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding-block: var(--space-4);
+    border-block: 1.5px solid var(--ink);
+  }
+  .amount {
+    font-size: var(--text-3xl);
+    font-weight: 800;
+    font-stretch: 82%;
+    line-height: 1;
+  }
+  .side-title {
+    font-size: var(--text-base);
+    font-weight: 700;
+  }
+  .benefits {
+    display: grid;
+    gap: var(--space-2);
+    padding-left: 1.1em;
+  }
+  .benefits li::marker {
+    color: var(--signal);
+  }
+  @media (max-width: 60rem) {
+    .layout {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+    .side {
+      position: static;
+    }
+  }
+</style>

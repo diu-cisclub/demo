@@ -1,0 +1,9 @@
+name: Advisor panel
+term: Faculty
+order: 1000
+kind: advisors
+members:
+  - { name: Shahriar Ahmed Israfil, role: Convener }
+  - { name: Tamanna Akter, role: Co-Convener }
+  - { name: Md. Sarwar Hossain Mollah, role: Advisor and Head of the Department of CIS }
+  - { name: Md. Mehedi Hasan, role: Advisor }

@@ -1,0 +1,11 @@
+name: 1st Executive Committee
+term: 2023 – 2024
+order: 1
+kind: executive
+summary: The founding committee that started the club.
+members:
+  - { name: Nishat Anjum Bristy, role: President }
+  - { name: Abdullah Al Noman, role: Vice President }
+  - { name: Tofayel Ahmed, role: Vice President }
+  - { name: Kazi Sakib, role: Core Member }
+  - { name: Jannatul Hafsa Mim, role: Core Member }

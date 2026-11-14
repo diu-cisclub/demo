@@ -1,0 +1,215 @@
+---
+import { render } from 'astro:content';
+import { Image } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CategoryTag from '../../components/CategoryTag.astro';
+import PhotoGrid from '../../components/PhotoGrid.astro';
+import Lightbox from '../../components/Lightbox.astro';
+import { eventUrl, getEvents, isHappeningNow, type EventEntry } from '../../lib/content';
+import { formatEventDate, isoDate, today } from '../../lib/dates';
+import { withBase } from '../../lib/url';
+
+export async function getStaticPaths() {
+  const events = await getEvents();
+  // Newest first, so "newer" is the previous item and "older" the next.
+  return events.map((event, i) => ({
+    params: { slug: event.id },
+    props: { event, newer: events[i - 1], older: events[i + 1] },
+  }));
+}
+
+interface Props {
+  event: EventEntry;
+  newer?: EventEntry | undefined;
+  older?: EventEntry | undefined;
+}
+const { event, newer, older } = Astro.props;
+const { data } = event;
+const { Content } = await render(event);
+const [cover, ...rest] = data.photos;
+const isUpcoming = (data.endDate ?? data.date).getTime() >= today().getTime() && !data.approximate;
+const live = isHappeningNow(event);
+---
+
+<BaseLayout title={data.title} description={data.summary} image={cover}>
+  <article class="container event">
+    <a class="back" href={withBase('/events/')}>All events</a>
+
+    <header class="head">
+      {
+        live && (
+          <p class="live">
+            <span class="live-dot" /> Happening now
+          </p>
+        )
+      }
+      <h1>{data.title}</h1>
+      {data.titleBn && <p class="bn" lang="bn">{data.titleBn}</p>}
+      <dl class="facts">
+        <div>
+          <dt>Date</dt>
+          <dd><time datetime={isoDate(data.date)}>{formatEventDate(data)}</time></dd>
+        </div>
+        {data.time && (<div><dt>Time</dt><dd>{data.time}</dd></div>)}
+        {data.venue && (<div><dt>Venue</dt><dd>{data.venue}</dd></div>)}
+        <div>
+          <dt>Category</dt>
+          <dd><CategoryTag category={data.category} /></dd>
+        </div>
+      </dl>
+      {data.result && <p class="result chamfer">{data.result}</p>}
+      {
+        isUpcoming && data.registrationUrl && (
+          <a class="button register" href={data.registrationUrl} rel="noopener noreferrer" target="_blank">
+            Register on the organiser’s site
+          </a>
+        )
+      }
+    </header>
+
+    {
+      cover && (
+        <a class="cover" href={cover.src} data-lightbox={event.id} data-caption={`${data.title}, photo 1 of ${data.photos.length}`}>
+          <Image src={cover} alt={`${data.title}, photo 1`} widths={[480, 720, 960]} sizes="(max-width: 60rem) 100vw, 50vw" loading="eager" fetchpriority="high" />
+        </a>
+      )
+    }
+
+    <div class="prose body">
+      <p class="summary">{data.summary}</p>
+      <Content />
+    </div>
+
+    {
+      rest.length > 0 && (
+        <section class="more-photos" aria-labelledby="photos-title">
+          <h2 id="photos-title">Photos</h2>
+          <PhotoGrid photos={rest} title={data.title} group={event.id} offset={1} />
+        </section>
+      )
+    }
+
+    <nav class="pager" aria-label="More events">
+      {newer ? <a href={withBase(eventUrl(newer))}><span>Newer</span>{newer.data.title}</a> : <span />}
+      {older && <a class="older" href={withBase(eventUrl(older))}><span>Older</span>{older.data.title}</a>}
+    </nav>
+  </article>
+  <Lightbox />
+</BaseLayout>
+
+<style>
+  .event {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-6) var(--space-8);
+    padding-top: var(--space-6);
+    align-items: start;
+  }
+  .back,
+  .pager,
+  .more-photos {
+    grid-column: 1 / -1;
+  }
+  .back {
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+  .head {
+    display: grid;
+    gap: var(--space-4);
+    align-content: start;
+  }
+  h1 {
+    font-size: var(--text-3xl);
+    font-weight: 800;
+    font-stretch: 85%;
+    line-height: 1.05;
+  }
+  .bn {
+    font-size: var(--text-xl);
+    color: var(--ink-soft);
+  }
+  .live {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+    color: var(--signal-strong);
+  }
+  .facts {
+    display: grid;
+    gap: var(--space-2);
+    border-top: 1.5px solid var(--ink);
+    padding-top: var(--space-3);
+  }
+  .facts div {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    gap: var(--space-3);
+  }
+  dt {
+    color: var(--ink-soft);
+  }
+  .result {
+    --cut: 8px;
+    justify-self: start;
+    padding: var(--space-3) var(--space-4);
+    background: var(--signal);
+    color: var(--on-ink);
+    font-weight: 700;
+    font-size: var(--text-lg);
+  }
+  .register {
+    justify-self: start;
+  }
+  .cover {
+    grid-row: span 2;
+    display: block;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+  }
+  .cover :global(img) {
+    width: 100%;
+  }
+  .summary {
+    font-size: var(--text-lg);
+    font-weight: 500;
+  }
+  .more-photos h2 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-4);
+  }
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--rule);
+  }
+  .pager a {
+    display: grid;
+    max-width: 22rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .pager a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--signal);
+  }
+  .pager span {
+    font-size: var(--text-sm);
+    font-weight: 400;
+    color: var(--ink-soft);
+  }
+  .older {
+    text-align: end;
+  }
+  @media (max-width: 60rem) {
+    .event {
+      grid-template-columns: 1fr;
+    }
+    .cover {
+      grid-row: auto;
+    }
+  }
+</style>

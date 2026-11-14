@@ -1,0 +1,277 @@
+---
+/**
+ * Membership form. Personal details and payment references are encrypted in
+ * the browser (envelope.ts) before being sent; see supabase/schema.sql for the
+ * server side. Payment methods come from Join settings in the CMS: a method
+ * with no account details is still selectable, but the request is then marked
+ * "awaiting payment" and the member is told how to pay in person.
+ */
+import '../../styles/forms.css';
+import JoinPuzzle from '../join-puzzle/JoinPuzzle.astro';
+import SecureNote from './SecureNote.astro';
+import { getSettings } from '../../lib/content';
+import { isRegistered } from './payments';
+import { withBase } from '../../lib/url';
+
+const [join, site] = await Promise.all([getSettings('join'), getSettings('site')]);
+const methods = join.paymentMethods.filter((m) => m.enabled);
+const registered = methods.filter(isRegistered);
+// Shown after a request for an unregistered method: suggest what does work.
+const alternatives = registered.length
+  ? `You can also pay now with ${registered.map((r) => r.name).join(' or ')} and send the transaction ID to the committee.`
+  : `Contact a club member to pay the ৳${join.fee} fee in person.`;
+---
+
+<div class="join-form" data-join-root>
+  <noscript><p class="notice">The membership form needs JavaScript, because your details are encrypted on your device before they are sent. You can also email {site.email}.</p></noscript>
+  <p class="notice" hidden data-closed>
+    Online membership requests are not open yet. Visit the club booth or email <a href={`mailto:${site.email}`}>{site.email}</a> to join.
+  </p>
+
+  <form class="form" novalidate data-join-form data-public-key={site.inboxPublicKey} hidden>
+    <fieldset>
+      <legend><span class="step">1</span>About you</legend>
+      <div class="fields">
+        <label class="field">
+          <span>Full name</span>
+          <input name="name" autocomplete="name" required maxlength="80" />
+        </label>
+        <label class="field">
+          <span>Student ID</span>
+          <input name="studentId" required maxlength="24" pattern="[0-9A-Za-z\-]{4,24}" inputmode="text" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="field">
+          <span>Department</span>
+          <input name="department" required maxlength="60" value="Computing & Information System" />
+        </label>
+        <label class="field">
+          <span>Batch / semester</span>
+          <input name="batch" required maxlength="30" placeholder="e.g. Batch 26, Fall 2026" />
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="email" required maxlength="120" />
+        </label>
+        <label class="field">
+          <span>Phone</span>
+          <input name="phone" type="tel" autocomplete="tel" required maxlength="20" pattern="(\+?88)?0?1[3-9][0-9 \-]{8,10}" placeholder="01XXXXXXXXX" />
+        </label>
+        <div class="field field--wide" role="group" aria-labelledby="interests-label">
+          <span class="field-label" id="interests-label">What are you interested in? <span class="optional">(pick any)</span></span>
+          <div class="checks">
+            {
+              join.interests.map((i) => (
+                <label class="check">
+                  <input type="checkbox" name="interests" value={i} /> {i}
+                </label>
+              ))
+            }
+          </div>
+        </div>
+        <label class="field field--wide">
+          <span>Anything you’d like the committee to know? <span class="optional">(optional)</span></span>
+          <textarea name="note" maxlength="1000"></textarea>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="pay">
+      <legend><span class="step">2</span>Pay the ৳{join.fee} fee</legend>
+      <p class="hint">{join.feeNote}. Choose how you’ll pay.</p>
+      <div class="methods" role="radiogroup" aria-label="Payment method">
+        {
+          methods.map((m) => (
+            <label class="method">
+              <input type="radio" name="paymentMethod" value={m.id} required data-registered={String(isRegistered(m))} />
+              <span class="method-name">
+                {m.name}
+                {m.nameBn && (
+                  <span class="bn" lang="bn">
+                    {m.nameBn}
+                  </span>
+                )}
+              </span>
+              <span class:list={['method-state', { ready: isRegistered(m) }]}>{isRegistered(m) ? 'Available' : 'Not set up yet'}</span>
+            </label>
+          ))
+        }
+      </div>
+
+      {
+        methods.map((m) =>
+          isRegistered(m) ? (
+            <div class="method-panel" data-panel-for={m.id} hidden>
+              {m.kind === 'cash' ? (
+                <p>
+                  <strong>Where to pay:</strong> {m.details}
+                </p>
+              ) : (
+                <div class="account">
+                  <span class="hint">{m.accountType || (m.kind === 'bank' ? 'Account' : 'Send to')}</span>
+                  <span class="account-number tabular">{m.details}</span>
+                  {m.accountName && <span class="hint">{m.accountName}</span>}
+                  <button type="button" class="copy" data-copy={m.details}>
+                    Copy number
+                  </button>
+                </div>
+              )}
+              {m.instructions && <p class="hint">{m.instructions}</p>}
+              {m.kind !== 'cash' && (
+                <div class="fields">
+                  <label class="field">
+                    <span>
+                      Transaction ID <span class="optional">(leave empty to pay later)</span>
+                    </span>
+                    <input name={`trxId-${m.id}`} data-trx maxlength="40" pattern="[0-9A-Za-z\-]{4,40}" autocomplete="off" spellcheck="false" />
+                  </label>
+                  <label class="field">
+                    <span>
+                      Paid from <span class="optional">(number or account)</span>
+                    </span>
+                    <input name={`paidFrom-${m.id}`} data-paid-from maxlength="40" autocomplete="off" />
+                  </label>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div class="method-panel notice notice--warn" data-panel-for={m.id} hidden>
+              <p>{join.unregisteredNotice}</p>
+              {registered.length > 0 && (
+                <p class="alternatives">
+                  Available right now:{' '}
+                  {registered.map((r) => (
+                    <button type="button" class="alt" data-switch-to={r.id}>
+                      {r.name}
+                    </button>
+                  ))}
+                </p>
+              )}
+            </div>
+          ),
+        )
+      }
+    </fieldset>
+
+    <JoinPuzzle />
+
+    <div class="trap" aria-hidden="true">
+      <label>Leave this empty <input name="website" tabindex="-1" autocomplete="off" /></label>
+    </div>
+
+    <label class="consent">
+      <input type="checkbox" name="consent" required />
+      <span>I agree that the club committee may store these details to manage my membership, as described in the <a href={withBase('/privacy/')}>privacy notice</a>.</span>
+    </label>
+
+    <p class="form-error" role="alert" hidden data-error></p>
+    <div class="form-actions">
+      <button class="button" type="submit" data-submit>Send membership request</button>
+      <SecureNote />
+    </div>
+  </form>
+
+  <div hidden data-messages data-paid={join.successPaid} data-pending={join.successPending} data-alternatives={alternatives}></div>
+  <div class="result chamfer" tabindex="-1" hidden data-result>
+    <h2 data-result-title>Request received</h2>
+    <p data-result-text></p>
+    <p class="hint" data-result-extra></p>
+  </div>
+</div>
+
+<script>
+  import { mountJoinForm } from './join-form';
+  const root = document.querySelector<HTMLElement>('[data-join-root]');
+  if (root) void mountJoinForm(root);
+</script>
+
+<style>
+  .methods {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+    gap: var(--space-2);
+  }
+  .method {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0 var(--space-3);
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    background: var(--paper-raised);
+    cursor: pointer;
+  }
+  .method:has(input:checked) {
+    border-color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--ink);
+  }
+  .method:has(input:focus-visible) {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+  .method input {
+    grid-row: span 2;
+    accent-color: var(--signal);
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .method-name {
+    font-weight: 650;
+  }
+  .bn {
+    margin-left: var(--space-2);
+    font-weight: 400;
+    color: var(--ink-soft);
+  }
+  .method-state {
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+  }
+  .method-state.ready {
+    color: var(--success);
+    font-weight: 600;
+  }
+  .method-panel {
+    display: grid;
+    gap: var(--space-4);
+  }
+  .method-panel[hidden] {
+    display: none;
+  }
+  .account {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--paper-sunk);
+  }
+  .account-number {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    font-stretch: 85%;
+    letter-spacing: 0.01em;
+  }
+  .copy,
+  .alt {
+    padding: 0.35rem 0.8rem;
+    border: 1px solid var(--ink);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .copy:hover,
+  .alt:hover {
+    background: var(--ink);
+    color: var(--on-ink);
+  }
+  .alternatives {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+</style>

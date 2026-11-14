@@ -1,0 +1,84 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getResources } from '../lib/content';
+import { categorySlug } from '../lib/categories';
+
+const groups = await getResources();
+const host = (url: string) => new URL(url).hostname.replace(/^www\./, '');
+---
+
+<BaseLayout title="Resources" description="Free courses and guides the club recommends for AI, machine learning, prompting and programming.">
+  <header class="container head">
+    <h1>Resources</h1>
+    <p class="lead">Free material the committee recommends, from your first program to training neural networks. Every link opens the original site.</p>
+  </header>
+
+  <div class="container topics">
+    {
+      groups.map(({ topic, items }) => (
+        <section class="topic" aria-labelledby={`t-${categorySlug(topic)}`}>
+          <h2 id={`t-${categorySlug(topic)}`}>{topic}</h2>
+          <ul>
+            {items.map((r) => (
+              <li>
+                <a href={r.data.url} rel="noopener noreferrer" target="_blank">
+                  {r.data.title}
+                </a>
+                <p>{r.data.description}</p>
+                <span class="host">{host(r.data.url)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .head {
+    padding-block: var(--space-7) var(--space-6);
+  }
+  .head .lead {
+    margin-top: var(--space-4);
+  }
+  .topic {
+    display: grid;
+    grid-template-columns: 16rem 1fr;
+    gap: var(--space-5);
+    padding-block: var(--space-5) var(--space-6);
+    border-top: 1.5px solid var(--ink);
+  }
+  .topic h2 {
+    font-size: var(--text-xl);
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: var(--space-5) var(--space-6);
+  }
+  li {
+    display: grid;
+    gap: var(--space-1);
+    align-content: start;
+  }
+  li a {
+    font-weight: 650;
+    font-size: var(--text-lg);
+    line-height: 1.3;
+  }
+  li p {
+    color: var(--ink-soft);
+  }
+  .host {
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+  }
+  @media (max-width: 48rem) {
+    .topic {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

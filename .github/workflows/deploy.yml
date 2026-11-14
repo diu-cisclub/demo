@@ -1,0 +1,78 @@
+# Builds and deploys the site to GitHub Pages.
+# Runs on every push to main (including CMS saves), every morning (so
+# "upcoming" events move to "past" on time), and on demand.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * *' # 06:00 Dhaka time
+  workflow_dispatch:
+
+# Least privilege: read the repo, publish to Pages, nothing else.
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Tests (neural net, encryption, database security)
+        run: npm test
+      - name: Type check
+        run: npx astro check
+      - id: pages
+        uses: actions/configure-pages@v5
+      - name: Build
+        run: npm run build
+        env:
+          ASTRO_TELEMETRY_DISABLED: '1'
+          SITE_URL: ${{ steps.pages.outputs.origin }}
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Repository variables (Settings → Secrets and variables → Actions → Variables).
+          # Both are public by design; see README → Security.
+          PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Supabase pauses free projects after a week without activity; a tiny
+  # request once a week keeps the join form working.
+  keep-database-awake:
+    if: github.event_name == 'schedule' && vars.PUBLIC_SUPABASE_URL != ''
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - run: >-
+          curl --fail --silent --show-error --max-time 20 -o /dev/null
+          -H "apikey: ${{ vars.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}"
+          "${{ vars.PUBLIC_SUPABASE_URL }}/auth/v1/health"

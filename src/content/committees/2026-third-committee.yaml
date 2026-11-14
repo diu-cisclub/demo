@@ -1,0 +1,32 @@
+name: 3rd Executive Committee
+term: '2026'
+order: 3
+kind: executive
+summary: The current committee, formed in January 2026. This list is still being completed.
+members:
+  - { name: Mabia Akonda Jemi, role: President }
+  - { name: Md. Ariful Haque Piash, role: Vice President }
+  - { name: Shinthiah Islam Ritu, role: Vice President }
+  - { name: Delower Hussain, role: Vice President }
+  - { name: A. F. M. Shah Arafin Atiq, role: General Secretary }
+  - { name: Shumaiya Jaman Shimu, role: Joint Secretary }
+  - { name: Samiul Haque Ann Nahian, role: Joint Secretary }
+  - { name: Md. Samiul Islam, role: Joint Secretary }
+  - { name: Jobaied Chowdhury Akash, role: Organizing Secretary }
+  - { name: MD. Mahid Alam Marin, role: Deputy Organizing Secretary }
+  - { name: Nusrat Jahan Jitu, role: Deputy Organizing Secretary }
+  - { name: Indrojit Sarkar Pallab, role: Deputy Organizing Secretary }
+  - { name: Jannatul Ferdous Bony, role: Secretary of Public Relations }
+  - { name: Puspita Halder Isha, role: Deputy Secretary of Public Relations }
+  - { name: MD. Shehabaul Alam, role: Deputy Secretary of Public Relations }
+  - { name: MD. Jakaria Hossin Fahim, role: Press Secretary }
+  - { name: T.M. Samin Ur Rahman Srabon, role: Design Secretary }
+  - { name: Nafisa Tabassum Nusrat, role: Deputy Secretary of Design }
+  - { name: Md. Mushfiqul Islam Ruhit, role: Media Secretary }
+  - { name: Rayhan Parvaz, role: Deputy Media Secretary }
+  - { name: Md. Sajjad Hossain Shovon, role: Sports Secretary }
+  - { name: MD. Fuyad Hasan Fahim, role: Deputy Sports Secretary }
+  - { name: Md. Abdul Ahad Pranto, role: Deputy Cultural Secretary }
+  - { name: Md. Tanvir Hannan Anik, role: Executive Member }
+  - { name: Fayek Ahanaf, role: Executive Member }
+  - { name: Raihan Chowdhury Nibir, role: Executive Member }

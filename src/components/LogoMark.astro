@@ -1,0 +1,58 @@
+---
+/**
+ * The club mark, redrawn as SVG from the supplied logo (src/assets/brand/logo.jpg):
+ * chamfered "C" and "S", a crimson "i", and the neural-trace lines between them.
+ * Colours come from the design tokens, so a palette change re-colours the mark too.
+ */
+interface Props {
+  class?: string;
+  /** Hide the thin traces at very small sizes (favicon-like use). */
+  simple?: boolean;
+  title?: string;
+}
+const { class: className, simple = false, title } = Astro.props;
+---
+
+<svg
+  class:list={['logo-mark', className]}
+  viewBox="10 16 795 692"
+  role={title ? 'img' : undefined}
+  aria-hidden={title ? undefined : 'true'}
+  aria-label={title}
+>
+  <g fill="var(--ink)">
+    <path d="M18 160 100 78h217v182h-74V152H130l-38 38v390l38 40h113V513h74v182H100l-82-82Z" />
+    <path
+      d="M535 160 615 78h180v182h-72V152h-78l-37 38v90l187 157v176l-80 82H535V513h73v107h77l38-40V470L535 315Z"
+    />
+  </g>
+  {
+    !simple && (
+      <g fill="none" stroke="var(--ink)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M167 337l153 123h70M328 347 173 525M328 347h62M167 337v-67l33-30h190M460 377h70l40-37M460 460h107l83 60 8 35M662 235l-47 55M460 170l60-60h60M405 690v-80M430 605l35 55h70" />
+      </g>
+    )
+  }
+  {
+    !simple && (
+      <g fill="var(--ink)">
+        <circle cx="167" cy="337" r="17" />
+        <circle cx="328" cy="347" r="17" />
+        <circle cx="173" cy="525" r="17" />
+        <circle cx="567" cy="460" r="17" />
+        <circle cx="658" cy="555" r="17" />
+        <circle cx="662" cy="235" r="17" />
+        <circle cx="405" cy="690" r="17" />
+      </g>
+    )
+  }
+  <path d="M390 235 460 170v400l-70 70Z" fill="var(--signal)" />
+  <circle cx="425" cy="60" r="40" fill="var(--signal)" />
+</svg>
+
+<style>
+  .logo-mark {
+    height: 100%;
+    width: auto;
+  }
+</style>

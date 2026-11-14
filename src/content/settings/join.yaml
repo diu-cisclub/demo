@@ -1,0 +1,31 @@
+intro: Fill in the form, pay the one-time fee, and the committee will confirm your membership. It takes about two minutes.
+fee: 100
+feeNote: one-time membership fee
+benefits:
+  - First seats at bootcamps, workshops and seminars
+  - A team for AI contests, hackathons and robotics competitions
+  - Mentorship from seniors, alumni and faculty advisors
+  - Volunteering and leadership roles in club events
+  - Festivals, tours and tournaments with the CIS family
+interests:
+  - Artificial intelligence & ML
+  - Programming & problem solving
+  - Robotics & IoT
+  - Design & media
+  - Event management
+  - Sports
+  - Culture & festivals
+# Every Bangladeshi payment option is listed. A method becomes payable as soon
+# as "details" (the account number, or where to pay for cash) is filled in.
+paymentMethods:
+  - { id: bkash, name: bKash, nameBn: বিকাশ, kind: mobile, enabled: true, details: '', accountName: '', accountType: '', instructions: '' }
+  - { id: nagad, name: Nagad, nameBn: নগদ, kind: mobile, enabled: true, details: '', accountName: '', accountType: '', instructions: '' }
+  - { id: rocket, name: Rocket, nameBn: রকেট, kind: mobile, enabled: true, details: '', accountName: '', accountType: '', instructions: '' }
+  - { id: upay, name: Upay, nameBn: উপায়, kind: mobile, enabled: true, details: '', accountName: '', accountType: '', instructions: '' }
+  - { id: tap, name: Tap, nameBn: ট্যাপ, kind: mobile, enabled: true, details: '', accountName: '', accountType: '', instructions: '' }
+  - { id: cellfin, name: CellFin, nameBn: সেলফিন, kind: mobile, enabled: true, details: '', accountName: '', accountType: '', instructions: '' }
+  - { id: bank, name: Bank transfer, nameBn: ব্যাংক ট্রান্সফার, kind: bank, enabled: true, details: '', accountName: '', accountType: '', instructions: '' }
+  - { id: cash, name: Cash, nameBn: নগদ টাকা, kind: cash, enabled: true, details: '', accountName: '', accountType: '', instructions: '' }
+unregisteredNotice: This method isn't set up yet. You can still send your request; it will stay pending until you pay a club member in person.
+successPaid: Request received. The committee will check your payment and confirm your membership.
+successPending: Request received and marked as pending. Pay the fee to a club member in person to complete it.

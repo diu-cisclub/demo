@@ -1,0 +1,5 @@
+title: "Hugging Face courses"
+url: "https://huggingface.co/learn"
+topic: "Machine learning"
+description: "Free courses on transformers, LLMs, diffusion models and agents."
+order: 40

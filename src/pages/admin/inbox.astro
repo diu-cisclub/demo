@@ -1,0 +1,326 @@
+---
+/**
+ * /admin/inbox: where the committee reads join requests and messages.
+ * Sign-in (password + authenticator code) proves who you are to the database;
+ * the private key file + passphrase decrypts the requests on this device.
+ * See README → "Inbox" for setting up admins and keys.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/forms.css';
+import { getSettings } from '../../lib/content';
+import { withBase } from '../../lib/url';
+
+const site = await getSettings('site');
+---
+
+<BaseLayout title="Inbox" noindex bare>
+  <div class="inbox container" data-inbox data-site-key={site.inboxPublicKey}>
+    <header class="bar">
+      <a href={withBase('/')} class="home">DIU CIS Club</a>
+      <h1 class="title">Committee inbox</h1>
+      <button type="button" class="link" hidden data-signout>Sign out</button>
+    </header>
+
+    <noscript><p class="notice">The inbox needs JavaScript: requests are decrypted on this device.</p></noscript>
+    <p class="notice notice--warn" hidden data-unconfigured>The database is not connected. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_PUBLISHABLE_KEY, then rebuild (README → Inbox).</p>
+    <p class="form-error" role="alert" tabindex="-1" hidden data-error></p>
+
+    <!-- 1. Sign in -->
+    <section class="panel" hidden data-step="signin" aria-labelledby="signin-title">
+      <h2 id="signin-title">Sign in</h2>
+      <form class="form" data-signin-form>
+        <label class="field"><span>Email</span><input name="email" type="email" autocomplete="username" required /></label>
+        <label class="field"><span>Password</span><input name="password" type="password" autocomplete="current-password" required minlength="12" /></label>
+        <button class="button" type="submit">Sign in</button>
+      </form>
+      <p class="hint">Accounts are created by the club’s Supabase owner. There is no public sign-up.</p>
+    </section>
+
+    <!-- 2a. First sign-in: set up an authenticator app -->
+    <section class="panel" hidden data-step="enroll" aria-labelledby="enroll-title">
+      <h2 id="enroll-title">Set up two-step sign-in</h2>
+      <p>Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator, 2FAS, Aegis…), then enter the 6-digit code it shows.</p>
+      <img class="qr" alt="QR code for your authenticator app" data-qr />
+      <p class="hint">Can’t scan? Enter this key manually: <code data-secret></code></p>
+      <form class="form" data-enroll-form>
+        <label class="field"><span>6-digit code</span><input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required /></label>
+        <button class="button" type="submit">Confirm</button>
+      </form>
+    </section>
+
+    <!-- 2b. Every sign-in: enter the authenticator code -->
+    <section class="panel" hidden data-step="verify" aria-labelledby="verify-title">
+      <h2 id="verify-title">Enter your code</h2>
+      <form class="form" data-verify-form>
+        <label class="field"><span>6-digit code from your authenticator app</span><input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required /></label>
+        <button class="button" type="submit">Verify</button>
+      </form>
+    </section>
+
+    <!-- 3. Unlock the private key on this device -->
+    <section class="panel" hidden data-step="unlock" aria-labelledby="unlock-title">
+      <h2 id="unlock-title">Unlock the inbox key</h2>
+      <p>Choose the club’s key file and enter its passphrase. The key stays in this tab’s memory and is forgotten when you sign out or close it.</p>
+      <form class="form" data-unlock-form>
+        <label class="field"><span>Key file</span><input name="file" type="file" accept=".json,application/json" required /></label>
+        <label class="field"><span>Passphrase</span><input name="passphrase" type="password" autocomplete="off" required /></label>
+        <button class="button" type="submit">Unlock</button>
+      </form>
+      <details class="setup">
+        <summary>No key yet? Create one</summary>
+        <form class="form" data-create-key-form>
+          <p class="hint">Do this once for the club. Anyone with the file and passphrase can read every request, so keep both safe and share them only with admins, through separate channels.</p>
+          <label class="field"><span>New passphrase (at least 14 characters)</span><input name="passphrase" type="password" autocomplete="new-password" minlength="14" required /></label>
+          <label class="field"><span>Repeat passphrase</span><input name="confirm" type="password" autocomplete="new-password" minlength="14" required /></label>
+          <button class="button button--quiet" type="submit">Create and download key file</button>
+        </form>
+        <div class="notice" hidden data-new-key>
+          <p><strong>Key file downloaded.</strong> Now publish the public key: open <a href={withBase('/admin/')}>the CMS</a> → Settings → Site → “Inbox public key”, paste the text below, and publish. Forms open once the site rebuilds.</p>
+          <textarea readonly rows="4" data-new-public-key></textarea>
+          <button type="button" class="button button--quiet" data-copy-public>Copy public key</button>
+        </div>
+      </details>
+    </section>
+
+    <!-- 4. The inbox -->
+    <section hidden data-step="list" aria-labelledby="list-title">
+      <div class="list-head">
+        <h2 id="list-title">Inbox</h2>
+        <div class="tabs" role="tablist" aria-label="Type">
+          <button role="tab" aria-selected="true" data-kind="join">Join requests <span data-count="join"></span></button>
+          <button role="tab" aria-selected="false" data-kind="contact">Messages <span data-count="contact"></span></button>
+        </div>
+        <label class="field status-filter">
+          <span class="visually-hidden">Status</span>
+          <select data-status-filter></select>
+        </label>
+        <button type="button" class="button button--quiet" data-export>Export CSV</button>
+        <button type="button" class="button button--quiet" data-refresh>Refresh</button>
+      </div>
+      <p class="notice notice--warn" hidden data-key-mismatch>
+        This key does not match the public key currently on the site. New requests are encrypted with the site’s key and will not open with this file.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead data-head></thead>
+          <tbody data-rows></tbody>
+        </table>
+      </div>
+      <p class="muted" hidden data-empty>Nothing here yet.</p>
+    </section>
+
+    <dialog class="detail" aria-labelledby="detail-title" data-detail>
+      <h2 id="detail-title" data-detail-title></h2>
+      <dl data-detail-fields></dl>
+      <div class="detail-actions">
+        <label class="field"><span>Status</span><select data-detail-status></select></label>
+        <button type="button" class="button" data-save>Save status</button>
+        <button type="button" class="button button--quiet danger" data-delete>Delete</button>
+        <button type="button" class="link" data-close>Close</button>
+      </div>
+    </dialog>
+  </div>
+</BaseLayout>
+
+<script>
+  import { mountInbox } from '../../features/inbox/inbox';
+  // Refuse to run inside a frame (clickjacking). GitHub Pages can't send frame-ancestors headers.
+  if (window.top === window.self) {
+    document.documentElement.classList.add('unframed');
+    const root = document.querySelector<HTMLElement>('[data-inbox]');
+    if (root) void mountInbox(root);
+  }
+</script>
+
+<style is:global>
+  html:not(.unframed) body {
+    display: none;
+  }
+</style>
+
+<style>
+  .inbox {
+    padding-block: var(--space-5) var(--space-8);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-6);
+    border-bottom: 1px solid var(--rule);
+  }
+  .home {
+    font-weight: 750;
+    text-decoration: none;
+  }
+  .title {
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+  .link {
+    margin-left: auto;
+    border: 0;
+    background: none;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .panel {
+    max-width: 30rem;
+    display: grid;
+    gap: var(--space-4);
+  }
+  .panel h2,
+  .list-head h2 {
+    font-size: var(--text-2xl);
+  }
+  .qr {
+    width: 12rem;
+    height: 12rem;
+    background: #fff;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+  }
+  code {
+    overflow-wrap: anywhere;
+    font-size: var(--text-sm);
+  }
+  .setup {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--rule);
+  }
+  .setup summary {
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: var(--space-4);
+  }
+  .setup .notice {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+  .setup textarea {
+    font-size: var(--text-xs);
+    width: 100%;
+  }
+  .list-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+  .list-head h2 {
+    margin-right: auto;
+  }
+  .tabs {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    background: var(--paper-sunk);
+  }
+  .tabs button {
+    min-height: 2.25rem;
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tabs [aria-selected='true'] {
+    background: var(--paper-raised);
+  }
+  .status-filter select {
+    min-height: 2.5rem;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    border-top: 1.5px solid var(--ink);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  :global(.inbox th),
+  :global(.inbox td) {
+    padding: var(--space-3);
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  :global(.inbox th) {
+    font-weight: 600;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  :global(.inbox tbody tr) {
+    cursor: pointer;
+  }
+  :global(.inbox tbody tr:hover) {
+    background: var(--paper-raised);
+  }
+  :global(.inbox .pill) {
+    display: inline-block;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: var(--paper-sunk);
+    white-space: nowrap;
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+  :global(.inbox .pill--verify_payment),
+  :global(.inbox .pill--unread) {
+    background: var(--signal);
+    color: var(--on-ink);
+  }
+  :global(.inbox .pill--approved) {
+    background: var(--success);
+    color: var(--on-ink);
+  }
+  .detail {
+    width: min(40rem, 100vw - 2rem);
+    padding: var(--space-6);
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--paper-raised);
+    color: var(--ink);
+  }
+  .detail::backdrop {
+    background: rgb(30 29 33 / 0.55);
+  }
+  .detail h2 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-4);
+  }
+  :global(.inbox .detail dl) {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-5);
+  }
+  :global(.inbox .detail dt) {
+    color: var(--ink-soft);
+  }
+  :global(.inbox .detail dd) {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+  .detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--space-3);
+  }
+  .detail-actions select {
+    min-height: 2.875rem;
+  }
+  .danger:hover {
+    background: var(--signal);
+    color: var(--on-ink);
+    box-shadow: none;
+  }
+</style>

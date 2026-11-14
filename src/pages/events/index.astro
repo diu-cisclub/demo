@@ -1,0 +1,330 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import EventCard from '../../components/EventCard.astro';
+import CategoryTag from '../../components/CategoryTag.astro';
+import LatentMap from '../../features/latent-map/LatentMap.astro';
+import { EVENT_CATEGORIES } from '../../content.config';
+import { eventUrl, getEventTimeline, groupByYear } from '../../lib/content';
+import { categorySlug } from '../../lib/categories';
+import { formatEventDate, isoDate, yearOf } from '../../lib/dates';
+import { withBase } from '../../lib/url';
+
+const { upcoming, past, all } = await getEventTimeline();
+const years = groupByYear(past);
+---
+
+<BaseLayout title="Events" description="Every DIU CIS Club event since 2023: AI contests, bootcamps, seminars, festivals and tournaments.">
+  <header class="container page-head">
+    <h1>Events</h1>
+    <p class="lead">AI contests, programming bootcamps, seminars, tournaments and festivals: {all.length} events since November 2023.</p>
+  </header>
+
+  {
+    upcoming.length > 0 && (
+      <section class="container section-tight" aria-labelledby="upcoming-title">
+        <h2 id="upcoming-title">Upcoming</h2>
+        <div class="upcoming-grid">
+          {upcoming.map((e, i) => (
+            <EventCard event={e} size={i === 0 ? 'large' : 'default'} eager={i === 0} />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <section class="container section-tight" aria-labelledby="past-title" data-past-events>
+    <div class="past-head">
+      <h2 id="past-title">Past events</h2>
+      <div class="view-toggle" role="group" aria-label="View" hidden data-view-toggle>
+        <button type="button" aria-pressed="true" data-view="list">List</button>
+        <button type="button" aria-pressed="false" data-view="map">Map</button>
+      </div>
+    </div>
+
+    <div data-panel="list">
+      <form class="filters" hidden data-filters aria-label="Filter past events">
+        <label>
+          <span class="visually-hidden">Year</span>
+          <select name="year">
+            <option value="">All years</option>
+            {years.map(([y]) => <option value={y}>{y}</option>)}
+          </select>
+        </label>
+        <fieldset class="chips">
+          <legend class="visually-hidden">Category</legend>
+          <label class="chip"><input type="radio" name="category" value="" checked /> <span>All</span></label>
+          {
+            EVENT_CATEGORIES.map((c) => (
+              <label class="chip">
+                <input type="radio" name="category" value={categorySlug(c)} /> <span>{c}</span>
+              </label>
+            ))
+          }
+        </fieldset>
+        <p class="count muted" aria-live="polite" data-count></p>
+      </form>
+
+      {
+        years.map(([year, events]) => (
+          <section class="year" data-year={year} aria-labelledby={`y${year}`}>
+            <h3 id={`y${year}`} class="year-title tabular">{year}</h3>
+            <ol class="rows">
+              {events.map((e) => (
+                <li class="row" data-category={categorySlug(e.data.category)} data-year={yearOf(e.data.date)}>
+                  <time class="row-date tabular" datetime={isoDate(e.data.date)}>
+                    {formatEventDate(e.data)}
+                  </time>
+                  <a class="row-title" href={withBase(eventUrl(e))}>
+                    {e.data.title}
+                    {e.data.titleBn && <span class="bn" lang="bn"> {e.data.titleBn}</span>}
+                  </a>
+                  <span class="row-tag">
+                    <CategoryTag category={e.data.category} />
+                  </span>
+                  {e.data.result && <span class="row-result">{e.data.result}</span>}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))
+      }
+      <p class="empty muted" hidden data-empty>No events match these filters.</p>
+    </div>
+
+    <div data-panel="map" class="map-panel">
+      <h3 class="visually-hidden">Event map</h3>
+      <LatentMap events={past} />
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // Progressive enhancement: without JS, the list and the map both show.
+  const root = document.querySelector<HTMLElement>('[data-past-events]')!;
+  const toggle = root.querySelector<HTMLElement>('[data-view-toggle]')!;
+  const form = root.querySelector<HTMLFormElement>('[data-filters]')!;
+  const panels = root.querySelectorAll<HTMLElement>('[data-panel]');
+  toggle.hidden = false;
+  form.hidden = false;
+
+  const show = (view: string) => {
+    panels.forEach((p) => (p.hidden = p.dataset.panel !== view));
+    toggle.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+  };
+  toggle.addEventListener('click', (e) => {
+    const view = (e.target as HTMLElement).closest('button')?.dataset.view;
+    if (view) show(view);
+  });
+  show('list');
+
+  // Filters, mirrored in the URL so a filtered view can be shared (?category=sports&year=2025).
+  const params = new URLSearchParams(location.search);
+  const apply = () => {
+    const year = (form.elements.namedItem('year') as HTMLSelectElement).value;
+    const category = new FormData(form).get('category') as string;
+    let shown = 0;
+    root.querySelectorAll<HTMLElement>('.row').forEach((row) => {
+      const match = (!year || row.dataset.year === year) && (!category || row.dataset.category === category);
+      row.hidden = !match;
+      if (match) shown++;
+    });
+    root.querySelectorAll<HTMLElement>('.year').forEach((y) => (y.hidden = !y.querySelector('.row:not([hidden])')));
+    root.querySelector<HTMLElement>('[data-empty]')!.hidden = shown > 0;
+    root.querySelector<HTMLElement>('[data-count]')!.textContent = `${shown} event${shown === 1 ? '' : 's'}`;
+    const next = new URLSearchParams();
+    if (year) next.set('year', year);
+    if (category) next.set('category', category);
+    history.replaceState(null, '', next.size ? `?${next}` : location.pathname);
+  };
+  const initialCategory = params.get('category') ?? '';
+  form.querySelectorAll<HTMLInputElement>('input[name=category]').forEach((r) => (r.checked = r.value === initialCategory));
+  (form.elements.namedItem('year') as HTMLSelectElement).value = params.get('year') ?? '';
+  form.addEventListener('change', apply);
+  apply();
+</script>
+
+<style>
+  .page-head {
+    padding-block: var(--space-7) var(--space-6);
+  }
+  .page-head .lead {
+    margin-top: var(--space-4);
+  }
+  .section-tight {
+    padding-block: var(--space-6);
+  }
+  .section-tight > h2,
+  .past-head {
+    margin-bottom: var(--space-5);
+  }
+  .upcoming-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .past-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .view-toggle {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    background: var(--paper-sunk);
+  }
+  .view-toggle button {
+    min-width: 5rem;
+    min-height: 2.25rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .view-toggle [aria-pressed='true'] {
+    background: var(--paper-raised);
+    box-shadow: 0 1px 2px rgb(49 48 54 / 0.12);
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+  select {
+    min-height: 2.5rem;
+    padding: 0 2rem 0 0.75rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--paper-raised);
+    font-size: 1rem;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    border: 0;
+    padding: 0;
+  }
+  .chip {
+    position: relative;
+  }
+  .chip input {
+    position: absolute;
+    opacity: 0;
+  }
+  .chip span {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .chip input:checked + span {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--on-ink);
+  }
+  .chip input:focus-visible + span {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+  .count {
+    margin-left: auto;
+    font-size: var(--text-sm);
+  }
+
+  .year {
+    display: grid;
+    grid-template-columns: 8rem 1fr;
+    gap: var(--space-5);
+    padding-block: var(--space-5);
+    border-top: 1.5px solid var(--ink);
+  }
+  .year-title {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    font-stretch: 82%;
+    line-height: 1;
+  }
+  .rows {
+    list-style: none;
+    padding: 0;
+  }
+  .row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 9.5rem 1fr auto;
+    gap: var(--space-1) var(--space-4);
+    padding-block: var(--space-3);
+    border-bottom: 1px solid var(--rule);
+  }
+  .row-date {
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+    padding-top: 0.15em;
+  }
+  .row-title {
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .row-title::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .row:hover .row-title {
+    text-decoration: underline;
+    text-decoration-color: var(--signal);
+  }
+  .bn {
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+  .row-tag {
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+  }
+  .row-result {
+    grid-column: 2 / -1;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--signal-strong);
+  }
+  .map-panel {
+    margin-top: var(--space-7);
+  }
+  [data-panel][hidden] {
+    display: none;
+  }
+  [data-panel='map']:not([hidden]) {
+    margin-top: 0;
+  }
+
+  @media (max-width: 52rem) {
+    .upcoming-grid,
+    .year {
+      grid-template-columns: 1fr;
+    }
+    .year {
+      gap: var(--space-3);
+    }
+    .row {
+      grid-template-columns: 1fr;
+    }
+    .row-result {
+      grid-column: auto;
+    }
+    .count {
+      margin-left: 0;
+    }
+  }
+</style>

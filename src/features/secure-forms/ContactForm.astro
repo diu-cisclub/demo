@@ -1,0 +1,78 @@
+---
+/** Contact form: encrypted end to end like the join form. */
+import '../../styles/forms.css';
+import SecureNote from './SecureNote.astro';
+import { getSettings } from '../../lib/content';
+import { withBase } from '../../lib/url';
+
+const [contact, site] = await Promise.all([getSettings('contact'), getSettings('site')]);
+---
+
+<div data-contact-root>
+  <noscript><p class="notice">The contact form needs JavaScript to encrypt your message. You can email {site.email} instead.</p></noscript>
+  <p class="notice" hidden data-closed>The contact form opens soon. Meanwhile, email <a href={`mailto:${site.email}`}>{site.email}</a>.</p>
+
+  <form class="form" novalidate data-contact-form data-public-key={site.inboxPublicKey} hidden>
+    <div class="fields">
+      <label class="field">
+        <span>Your name</span>
+        <input name="name" autocomplete="name" required maxlength="80" />
+      </label>
+      <label class="field">
+        <span>Email</span>
+        <input name="email" type="email" autocomplete="email" required maxlength="120" />
+      </label>
+      <label class="field field--wide">
+        <span>Topic</span>
+        <select name="topic" required>
+          {contact.topics.map((t) => <option>{t}</option>)}
+        </select>
+      </label>
+      <label class="field field--wide">
+        <span>Message</span>
+        <textarea name="message" required minlength="10" maxlength="3000" rows="6"></textarea>
+      </label>
+    </div>
+    <div class="trap" aria-hidden="true">
+      <label>Leave this empty <input name="website" tabindex="-1" autocomplete="off" /></label>
+    </div>
+    <label class="consent">
+      <input type="checkbox" name="consent" required />
+      <span>I agree that the committee may store this message to reply to me (<a href={withBase('/privacy/')}>privacy notice</a>).</span>
+    </label>
+    <p class="form-error" role="alert" hidden data-error></p>
+    <div class="form-actions">
+      <button class="button" type="submit" data-submit>Send message</button>
+      <SecureNote />
+    </div>
+  </form>
+
+  <div class="result chamfer" tabindex="-1" hidden data-result>
+    <h2>Message sent</h2>
+    <p>Thanks. The committee reads every message and replies by email, usually within a few days.</p>
+  </div>
+</div>
+
+<script>
+  import { isBot, prepare, text, validate, withBusy } from './form-kit';
+  import { submit } from './submit';
+
+  const root = document.querySelector<HTMLElement>('[data-contact-root]');
+  if (root) {
+    const form = root.querySelector<HTMLFormElement>('[data-contact-form]')!;
+    const errorBox = root.querySelector<HTMLElement>('[data-error]')!;
+    errorBox.tabIndex = -1;
+    const key = await prepare(form, root.querySelector('[data-closed]')!);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!key || !validate(form)) return;
+      const payload = { name: text(form, 'name'), email: text(form, 'email'), topic: text(form, 'topic'), message: text(form, 'message') };
+      const ok = isBot(form) || (await withBusy(form, errorBox, () => submit({ kind: 'contact', payload }, key)));
+      if (!ok) return;
+      const result = root.querySelector<HTMLElement>('[data-result]')!;
+      form.remove();
+      result.hidden = false;
+      result.focus();
+    });
+  }
+</script>

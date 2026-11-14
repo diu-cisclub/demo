@@ -1,0 +1,112 @@
+---
+/** One shared photo viewer for every <PhotoGrid /> on the page. Uses native <dialog>. */
+---
+
+<dialog class="lightbox" aria-label="Photo viewer" data-lightbox-dialog>
+  <figure>
+    <img alt="" data-lb-img />
+    <figcaption data-lb-caption></figcaption>
+  </figure>
+  <div class="controls">
+    <button type="button" data-lb-prev aria-label="Previous photo">‹</button>
+    <button type="button" data-lb-next aria-label="Next photo">›</button>
+    <button type="button" data-lb-close aria-label="Close">×</button>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>('[data-lightbox-dialog]');
+  if (dialog) {
+    const img = dialog.querySelector<HTMLImageElement>('[data-lb-img]')!;
+    const caption = dialog.querySelector<HTMLElement>('[data-lb-caption]')!;
+    let items: HTMLAnchorElement[] = [];
+    let index = 0;
+
+    const show = (i: number) => {
+      index = (i + items.length) % items.length;
+      const a = items[index]!;
+      img.src = a.href;
+      img.alt = a.querySelector('img')?.alt ?? '';
+      caption.textContent = a.dataset.caption ?? '';
+    };
+
+    document.addEventListener('click', (e) => {
+      const a = (e.target as Element).closest<HTMLAnchorElement>('a[data-lightbox]');
+      if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault();
+      items = [...document.querySelectorAll<HTMLAnchorElement>(`a[data-lightbox="${CSS.escape(a.dataset.lightbox!)}"]`)];
+      show(items.indexOf(a));
+      dialog.showModal();
+    });
+    dialog.querySelector('[data-lb-prev]')!.addEventListener('click', () => show(index - 1));
+    dialog.querySelector('[data-lb-next]')!.addEventListener('click', () => show(index + 1));
+    dialog.querySelector('[data-lb-close]')!.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') show(index - 1);
+      if (e.key === 'ArrowRight') show(index + 1);
+    });
+    // Click on the backdrop closes.
+    dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
+    // Swipe on touch screens.
+    let startX = 0;
+    dialog.addEventListener('touchstart', (e) => (startX = e.touches[0]!.clientX), { passive: true });
+    dialog.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0]!.clientX - startX;
+      if (Math.abs(dx) > 50) show(index + (dx < 0 ? 1 : -1));
+    });
+  }
+</script>
+
+<style>
+  .lightbox {
+    max-width: min(64rem, 100vw - 2rem);
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--on-ink);
+    overflow: visible;
+  }
+  .lightbox::backdrop {
+    background: rgb(30 29 33 / 0.92);
+  }
+  figure {
+    display: grid;
+    gap: var(--space-3);
+  }
+  img {
+    max-height: calc(100dvh - 8rem);
+    width: auto;
+    margin-inline: auto;
+    border-radius: var(--radius-sm);
+  }
+  figcaption {
+    text-align: center;
+    font-size: var(--text-sm);
+    color: color-mix(in srgb, var(--on-ink) 80%, transparent);
+  }
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+  button {
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid color-mix(in srgb, var(--on-ink) 30%, transparent);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--on-ink);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  button:hover {
+    background: var(--on-ink);
+    color: var(--ink);
+  }
+  button:focus-visible {
+    outline-color: var(--on-ink);
+  }
+</style>

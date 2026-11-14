@@ -1,0 +1,188 @@
+---
+/**
+ * Feature E: ⌘K / Ctrl+K search across the site. Opens from the header
+ * button too (works on phones). Keyword results are instant; if Ask CIS's
+ * model is already loaded, they are re-ranked by meaning.
+ */
+---
+
+<dialog class="palette" aria-label="Search the site" data-search>
+  <div class="field">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg>
+    <input
+      type="search"
+      role="combobox"
+      aria-expanded="false"
+      aria-controls="search-results"
+      aria-autocomplete="list"
+      aria-label="Search events, people, pages"
+      placeholder="Search events, people, pages…"
+      autocomplete="off"
+      spellcheck="false"
+      maxlength="120"
+      data-search-input
+    />
+    <kbd>Esc</kbd>
+  </div>
+  <ul id="search-results" role="listbox" aria-label="Results" data-search-results></ul>
+  <p class="empty" hidden data-search-empty>No matches. Try another word, or ask Ask CIS.</p>
+</dialog>
+
+<script>
+  import { withBase } from '../../lib/url';
+  import { keywordSearch, loadIndex } from './search';
+  import { rerank } from '../ask-cis/retrieval';
+
+  const dialog = document.querySelector<HTMLDialogElement>('[data-search]')!;
+  const input = dialog.querySelector<HTMLInputElement>('[data-search-input]')!;
+  const list = dialog.querySelector<HTMLUListElement>('[data-search-results]')!;
+  const empty = dialog.querySelector<HTMLElement>('[data-search-empty]')!;
+  let active = -1;
+  let seq = 0;
+
+  const open = () => {
+    void loadIndex(withBase('/'));
+    dialog.showModal();
+    input.select();
+  };
+  document.querySelectorAll('[data-open-search]').forEach((b) => b.addEventListener('click', open));
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      dialog.open ? dialog.close() : open();
+    }
+  });
+  dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
+
+  const options = () => [...list.querySelectorAll<HTMLAnchorElement>('[role=option]')];
+  const setActive = (i: number) => {
+    const opts = options();
+    active = opts.length ? (i + opts.length) % opts.length : -1;
+    opts.forEach((o, n) => o.setAttribute('aria-selected', String(n === active)));
+    input.setAttribute('aria-activedescendant', active >= 0 ? opts[active]!.id : '');
+    opts[active]?.scrollIntoView({ block: 'nearest' });
+  };
+
+  input.addEventListener('input', async () => {
+    const query = input.value;
+    const run = ++seq;
+    let results = keywordSearch(await loadIndex(withBase('/')), query);
+    results = await rerank(results, query);
+    if (run !== seq) return; // a newer keystroke won
+    list.replaceChildren(
+      ...results.map((d, i) => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.id = `sr-${i}`;
+        a.setAttribute('role', 'option');
+        a.href = withBase(d.url);
+        const title = document.createElement('span');
+        title.className = 'r-title';
+        title.textContent = d.title;
+        const meta = document.createElement('span');
+        meta.className = 'r-meta';
+        meta.textContent = `${d.section}: ${d.text.slice(0, 110)}…`;
+        a.append(title, meta);
+        li.append(a);
+        return li;
+      }),
+    );
+    empty.hidden = results.length > 0 || query.trim().length < 2;
+    input.setAttribute('aria-expanded', String(results.length > 0));
+    setActive(0);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') (e.preventDefault(), setActive(active + 1));
+    if (e.key === 'ArrowUp') (e.preventDefault(), setActive(active - 1));
+    if (e.key === 'Enter' && active >= 0) {
+      e.preventDefault();
+      options()[active]?.click();
+    }
+  });
+</script>
+
+<style>
+  .palette {
+    width: min(40rem, calc(100vw - 2rem));
+    margin: 12vh auto auto;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--paper-raised);
+    color: var(--ink);
+    box-shadow: 0 24px 64px rgb(49 48 54 / 0.3);
+  }
+  .palette::backdrop {
+    background: rgb(49 48 54 / 0.4);
+  }
+  .field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--rule);
+  }
+  .field svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    fill: none;
+    stroke: var(--ink-soft);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  input {
+    flex: 1;
+    min-width: 0;
+    min-height: 2.5rem;
+    border: 0;
+    background: transparent;
+    font-size: var(--text-lg);
+    outline: none;
+  }
+  input::-webkit-search-cancel-button {
+    display: none;
+  }
+  kbd {
+    font: inherit;
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-2);
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  ul:empty {
+    display: none;
+  }
+  ul :global([role='option']) {
+    display: grid;
+    gap: 0.15rem;
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+  }
+  ul :global([aria-selected='true']) {
+    background: var(--paper-sunk);
+    box-shadow: inset 3px 0 0 var(--signal);
+  }
+  ul :global(.r-title) {
+    font-weight: 600;
+  }
+  ul :global(.r-meta) {
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .empty {
+    padding: var(--space-4);
+    color: var(--ink-soft);
+  }
+</style>

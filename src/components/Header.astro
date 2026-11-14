@@ -1,0 +1,222 @@
+---
+import LogoMark from './LogoMark.astro';
+import { isCurrent, withBase } from '../lib/url';
+
+const links = [
+  { href: '/events/', label: 'Events' },
+  { href: '/about/', label: 'About' },
+  { href: '/gallery/', label: 'Gallery' },
+  { href: '/resources/', label: 'Resources' },
+  { href: '/contact/', label: 'Contact' },
+];
+const path = Astro.url.pathname;
+---
+
+<header class="header">
+  <div class="container bar">
+    <a class="brand" href={withBase('/')} aria-label="DIU CIS Club, home">
+      <LogoMark class="brand-mark" />
+      <span class="brand-text"><span class="brand-diu">DIU</span> CIS Club</span>
+    </a>
+
+    <nav class="nav" id="site-nav" aria-label="Main">
+      <ul>
+        {
+          links.map(({ href, label }) => (
+            <li>
+              <a href={withBase(href)} aria-current={isCurrent(href, path) ? 'page' : undefined}>
+                {label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="actions">
+      <button class="icon-button" type="button" data-open-search aria-label="Search the site" aria-keyshortcuts="Control+K Meta+K">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg>
+        <kbd class="kbd">Ctrl K</kbd>
+      </button>
+      <a class="button join" href={withBase('/join/')} aria-current={isCurrent('/join/', path) ? 'page' : undefined}>Join</a>
+      <button class="icon-button menu" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M4 16h16"></path></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<script>
+  // Mobile menu. Without JS the nav simply stays visible (see CSS).
+  const toggle = document.querySelector<HTMLButtonElement>('.header .menu');
+  const header = document.querySelector<HTMLElement>('.header');
+  document.documentElement.classList.add('js');
+  toggle?.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(open));
+    header?.classList.toggle('is-open', open);
+  });
+  // Show the right shortcut hint on Apple devices.
+  if (/Mac|iPhone|iPad/.test(navigator.userAgent)) {
+    document.querySelectorAll('.kbd').forEach((k) => (k.textContent = '⌘K'));
+  }
+</script>
+
+<style>
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(12px) saturate(1.2);
+    border-bottom: 1px solid var(--rule);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+    min-height: 4.25rem;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: 2.4rem;
+    text-decoration: none;
+    font-weight: 750;
+    font-stretch: 88%;
+    font-size: 1.15rem;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .brand :global(.brand-mark) {
+    height: 2.4rem;
+  }
+  .brand-diu {
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+
+  .nav ul {
+    display: flex;
+    gap: var(--space-1);
+    list-style: none;
+    padding: 0;
+  }
+  .nav a {
+    position: relative;
+    display: block;
+    padding: var(--space-2) var(--space-3);
+    text-decoration: none;
+    font-weight: 500;
+    color: var(--ink-soft);
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+  .nav a:hover {
+    color: var(--ink);
+  }
+  /* The current page gets the logo's crimson node. */
+  .nav a[aria-current='page'] {
+    color: var(--ink);
+  }
+  .nav a[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -2px;
+    width: 6px;
+    height: 6px;
+    margin-left: -3px;
+    border-radius: 50%;
+    background: var(--signal);
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
+  }
+  .join {
+    min-height: 2.5rem;
+    padding-block: 0.5rem;
+  }
+  .icon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+    justify-content: center;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--paper-raised);
+    cursor: pointer;
+  }
+  .icon-button:hover {
+    border-color: var(--ink-faint);
+  }
+  .icon-button svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  .kbd {
+    font: inherit;
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+  }
+  .menu {
+    display: none;
+  }
+
+  @media (max-width: 60rem) {
+    .bar {
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+    .kbd {
+      display: none;
+    }
+    :global(.js) .menu {
+      display: inline-flex;
+    }
+    .nav {
+      order: 3;
+      width: 100%;
+    }
+    .nav ul {
+      flex-wrap: wrap;
+      padding-bottom: var(--space-3);
+    }
+    /* With JS, the nav collapses behind the menu button. */
+    :global(.js) .nav {
+      display: none;
+    }
+    :global(.js) .is-open .nav {
+      display: block;
+    }
+    :global(.js) .is-open .nav ul {
+      flex-direction: column;
+    }
+    .nav a {
+      padding-block: var(--space-3);
+      font-size: var(--text-lg);
+    }
+    .nav a[aria-current='page']::after {
+      left: auto;
+      right: var(--space-3);
+      top: 50%;
+      margin-top: -3px;
+    }
+  }
+  @media (max-width: 26rem) {
+    .brand-diu {
+      display: none;
+    }
+  }
+</style>
