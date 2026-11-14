@@ -9,7 +9,7 @@
  *
  * Secrets (Supabase → Edge Functions → Secrets):
  *   GEMINI_API_KEY  required. From Google AI Studio.
- *   GEMINI_MODEL    optional. Defaults to gemini-3.5-flash-lite.
+ *   GEMINI_MODEL    optional. Tried first; falls back to current Flash-Lite models.
  *   SITE_URL        optional. Defaults to https://diu-cisclub.github.io
  *
  * Privacy: questions and IP addresses are never stored or logged. IPs live
@@ -23,7 +23,11 @@ interface Doc {
 }
 
 const SITE = (Deno.env.get('SITE_URL') ?? 'https://diu-cisclub.github.io').replace(/\/+$/, '');
-const MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash-lite';
+// Tried in order: Google retires model names over time, so a missing model
+// falls through to the next instead of breaking Ask CIS.
+const MODELS = [Deno.env.get('GEMINI_MODEL'), 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'].filter(
+  (m, i, all): m is string => Boolean(m) && all.indexOf(m) === i,
+);
 const KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const ALLOWED_ORIGINS = new Set([new URL(SITE).origin, 'http://localhost:4321']);
 
@@ -104,26 +108,47 @@ Deno.serve(async (req) => {
   const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0]!.trim() || 'unknown';
   if (limited(ip)) return reply(429, { error: 'busy' });
 
+  let passages: Doc[];
   try {
-    const passages = topPassages(await siteDocs(), question);
-    const sources = passages.map((d, i) => `[${i + 1}] ${d.title}: ${d.text.slice(0, 900)}`).join('\n\n');
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': KEY },
-      signal: AbortSignal.timeout(15000),
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: `Sources:\n${sources || '(none found)'}\n\nQuestion: ${question}` }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
-      }),
-    });
-    if (res.status === 429) return reply(429, { error: 'busy' });
-    if (!res.ok) return reply(502, { error: 'upstream' });
-    const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const answer = (data.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
-    if (!answer) return reply(502, { error: 'empty' });
-    return reply(200, { answer: answer.slice(0, 1200), sources: passages.slice(0, 3).map((d) => ({ title: d.title, url: d.url })) });
+    passages = topPassages(await siteDocs(), question);
   } catch {
-    return reply(502, { error: 'upstream' });
+    return reply(502, { error: 'upstream', detail: 'site_index' });
   }
+  const sources = passages.map((d, i) => `[${i + 1}] ${d.title}: ${d.text.slice(0, 900)}`).join('\n\n');
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: SYSTEM }] },
+    contents: [{ role: 'user', parts: [{ text: `Sources:\n${sources || '(none found)'}\n\nQuestion: ${question}` }] }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
+  });
+
+  // `detail` names the failing step and Google's status code only; it never
+  // contains the question, the key or Google's error text.
+  let detail = 'gemini_unreachable';
+  for (const model of MODELS) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': KEY },
+        signal: AbortSignal.timeout(15000),
+        body,
+      });
+      if (res.status === 429) return reply(429, { error: 'busy' });
+      if (res.status === 404) {
+        detail = 'gemini_404';
+        continue; // model retired or renamed: try the next one
+      }
+      if (!res.ok) return reply(502, { error: 'upstream', detail: `gemini_${res.status}` });
+      const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+      const answer = (data.candidates?.[0]?.content?.parts ?? [])
+        .filter((p) => !p.thought)
+        .map((p) => p.text ?? '')
+        .join('')
+        .trim();
+      if (!answer) return reply(502, { error: 'empty', detail: model });
+      return reply(200, { answer: answer.slice(0, 1200), sources: passages.slice(0, 3).map((d) => ({ title: d.title, url: d.url })) });
+    } catch {
+      detail = 'gemini_timeout';
+    }
+  }
+  return reply(502, { error: 'upstream', detail });
 });
