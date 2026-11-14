@@ -153,6 +153,8 @@ grant select (id, created_at, kind, status, payment_method, puzzle_solved, ciphe
 grant update (status) on public.submissions to authenticated;
 grant delete on public.submissions to authenticated;
 revoke all on table private.audit_log from public, anon, authenticated;
+-- Defence in depth: no policies, so only the SECURITY DEFINER triggers can write here.
+alter table private.audit_log enable row level security;
 
 -- ── Row Level Security ──────────────────────────────────────────────────────
 alter table public.submissions enable row level security;
