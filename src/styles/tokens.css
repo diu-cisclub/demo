@@ -28,7 +28,7 @@
 
   /* Event categories, used only on the latent map and as small keys.
      Chosen to stay distinguishable from each other and from --signal. */
-  --cat-ai: #a33646;
+  --cat-ai: #1d6f73; /* deep teal: crimson is reserved for "active" */
   --cat-workshop: #2f5d8c;
   --cat-win: #a8741a;
   --cat-partner: #6a4c93;

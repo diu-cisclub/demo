@@ -1,143 +1,279 @@
 ---
 /**
- * Feature C: the event "latent space" map. Every event is a point; events
- * whose write-ups use similar words sit close together. Positions are
- * computed at build time (lsa.ts), so the map is plain SVG with zero JS.
+ * Feature C: the event landscape. Every event is placed by latent semantic
+ * analysis of its write-up (lsa.ts, at build time); in the browser the
+ * positions become a 3D topographic model (landscape.ts) whose hills are
+ * clusters of similar events, grown along a timeline. Falls back to a flat
+ * SVG map without WebGL.
  */
+import { getImage } from 'astro:assets';
 import type { EventEntry } from '../../lib/content';
-import { eventUrl } from '../../lib/content';
+import { eventUrl, getEventTimeline } from '../../lib/content';
 import { categoryVar } from '../../lib/categories';
-import { formatEventDate } from '../../lib/dates';
+import { formatEventDate, today } from '../../lib/dates';
 import { withBase } from '../../lib/url';
 import { EVENT_CATEGORIES } from '../../content.config';
-import { latentPositions } from './lsa';
+import { latentPositions, namedClusters } from './lsa';
+import MapFallback from './MapFallback.astro';
+import type { MapData } from './landscape';
 
-interface Props {
-  events: EventEntry[];
-}
-const { events } = Astro.props;
-
-const W = 1000;
-const H = 620;
-const PAD = 48;
+const { all } = await getEventTimeline();
+const events: EventEntry[] = [...all].sort((a, b) => a.data.date.getTime() - b.data.date.getTime());
 const text = (e: EventEntry) => [e.data.title, e.data.title, e.data.category, e.data.category, e.data.summary, e.body ?? ''].join(' ');
-const pos = latentPositions(events.map(text)).map((p) => ({ x: PAD + p.x * (W - PAD * 2), y: PAD + p.y * (H - PAD * 2) }));
+const positions = latentPositions(events.map(text));
+const now = today().getTime();
+const thumbs = await Promise.all(events.map((e) => (e.data.photos[0] ? getImage({ src: e.data.photos[0], width: 240, format: 'webp' }) : null)));
 
-// Nudge overlapping points apart so every one stays clickable.
-const radius = events.map((e) => 7 + Math.sqrt(e.data.photos.length) * 2.4 + (e.data.featured ? 3 : 0));
-for (let it = 0; it < 60; it++) {
-  for (let i = 0; i < pos.length; i++) {
-    for (let j = i + 1; j < pos.length; j++) {
-      const a = pos[i]!;
-      const b = pos[j]!;
-      const min = radius[i]! + radius[j]! + 4;
-      const dx = b.x - a.x || 0.01;
-      const dy = b.y - a.y;
-      const d = Math.hypot(dx, dy);
-      if (d < min) {
-        const push = (min - d) / 2;
-        a.x -= (dx / d) * push;
-        a.y -= (dy / d) * push;
-        b.x += (dx / d) * push;
-        b.y += (dy / d) * push;
-      }
-    }
-  }
-}
-const clampX = (x: number) => Math.min(W - PAD / 2, Math.max(PAD / 2, x));
-const clampY = (y: number) => Math.min(H - PAD / 2, Math.max(PAD / 2, y));
+const data: MapData = {
+  events: events.map((e, i) => ({
+    title: e.data.title,
+    url: withBase(eventUrl(e)),
+    t: e.data.date.getTime(),
+    dateLabel: formatEventDate(e.data),
+    category: e.data.category,
+    cat: categoryVar(e.data.category),
+    x: positions[i]!.x,
+    y: positions[i]!.y,
+    weight: 0.8 + Math.sqrt(e.data.photos.length) * 0.25 + (e.data.featured ? 0.35 : 0),
+    thumb: thumbs[i]?.src,
+    upcoming: (e.data.endDate ?? e.data.date).getTime() >= now && !e.data.approximate,
+  })),
+  clusters: namedClusters(positions, events.map((e) => e.data.category), 7),
+  start: events[0]!.data.date.getTime() - 20 * 24 * 3600 * 1000,
+  end: Math.max(now, events.at(-1)!.data.date.getTime()),
+};
+// Year marks under the slider, positioned by real time (set in landscape.ts).
+const years = [...new Set(events.map((e) => e.data.date.getFullYear()))]
+  .map((y) => ({ y, t: Date.UTC(y, 0, 1) }))
+  .filter(({ t }) => t > data.start && t < data.end);
 ---
 
-<figure class="map">
-  <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Map of events, positioned by similarity of their descriptions">
-    {
-      events.map((e, i) => {
-        const x = clampX(pos[i]!.x);
-        const y = clampY(pos[i]!.y);
-        const anchor = x > W * 0.7 ? 'end' : 'start';
-        return (
-          <a href={withBase(eventUrl(e))} class:list={['pt', `pt--${categoryVar(e.data.category)}`]}>
-            <title>{`${e.data.title} (${formatEventDate(e.data)})`}</title>
-            <circle cx={x.toFixed(1)} cy={y.toFixed(1)} r={radius[i]!.toFixed(1)} />
-            <text x={(x + (anchor === 'end' ? -1 : 1) * (radius[i]! + 8)).toFixed(1)} y={(y + 5).toFixed(1)} text-anchor={anchor}>
-              {e.data.title}
-            </text>
-          </a>
-        );
-      })
-    }
-  </svg>
+<figure class="landscape" data-landscape>
+  <div class="stage">
+    <MapFallback events={events} positions={positions} />
+    <canvas data-map-canvas aria-hidden="true"></canvas>
+    <div class="labels" aria-hidden="true" data-map-labels></div>
+    <a class="card" hidden data-map-card aria-hidden="true" tabindex="-1">
+      <img alt="" width="240" height="160" data-card-img />
+      <span class="card-title" data-card-title></span>
+      <span class="card-meta" data-card-meta></span>
+    </a>
+    <p class="hint">Drag to turn the model. Hover a pin, then click to open the event.</p>
+  </div>
+
+  <div class="timeline">
+    <button class="play" type="button" aria-pressed="false" data-map-play>
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg>
+      <span>Play history</span>
+    </button>
+    <div class="track">
+      <label class="visually-hidden" for="map-time">Show events up to</label>
+      <input id="map-time" type="range" step="86400000" data-map-time />
+      <div class="years" aria-hidden="true">{years.map(({ y, t }) => <span data-t={t}>{y}</span>)}</div>
+    </div>
+    <p class="readout" aria-live="polite">
+      <span class="date tabular" data-map-date></span>
+      <span class="count tabular" data-map-count></span>
+    </p>
+    <p class="latest" data-map-latest></p>
+  </div>
+
   <figcaption>
     <ul class="legend">
-      {EVENT_CATEGORIES.map((c) => <li class:list={['key', `pt--${categoryVar(c)}`]}>{c}</li>)}
+      {EVENT_CATEGORIES.map((c) => <li class:list={['key', `key--${categoryVar(c)}`]}>{c}</li>)}
+      <li class="key key--next">Upcoming</li>
     </ul>
     <p class="muted">
-      Each point is an event, placed by latent semantic analysis of its write-up: events described with similar words sit
-      close together. Bigger points have more photos. Hover or focus a point to see its name.
+      Each pin is an event. Its place comes from latent semantic analysis of what was written about it, so similar events
+      sit together and form hills: the higher the hill, the more the club has done of that kind.
     </p>
   </figcaption>
 </figure>
 
+<script is:inline type="application/json" data-map-data set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+
+<script>
+  import type { MapData } from './landscape';
+  const root = document.querySelector<HTMLElement>('[data-landscape]');
+  const json = document.querySelector('[data-map-data]')?.textContent;
+  if (root && json) {
+    // three.js only downloads on pages with the map, after the page is usable.
+    import('./landscape').then(({ mountLandscape }) => mountLandscape(root, JSON.parse(json) as MapData));
+  }
+</script>
+
 <style>
-  .map {
+  .landscape {
     display: grid;
     gap: var(--space-4);
   }
-  svg {
-    width: 100%;
-    height: auto;
-    border-radius: var(--radius-lg);
-    background-color: var(--paper-raised);
-    background-image:
-      linear-gradient(var(--rule) 1px, transparent 1px),
-      linear-gradient(90deg, var(--rule) 1px, transparent 1px);
-    background-size: 5% 8%;
+  .stage {
+    --cut: var(--cut-lg);
+    position: relative;
+    height: clamp(26rem, 62vh, 44rem);
+    overflow: hidden;
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+    background:
+      radial-gradient(ellipse at 50% 40%, var(--paper-raised) 0%, var(--paper) 70%),
+      var(--paper);
     box-shadow: inset 0 0 0 1px var(--rule);
-    overflow: visible;
   }
-  .pt circle {
-    fill: var(--c);
-    fill-opacity: 0.78;
-    stroke: var(--paper-raised);
-    stroke-width: 2;
-    transition: fill-opacity var(--dur-fast) var(--ease-out);
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    touch-action: none;
   }
-  .pt text {
-    font-size: 17px;
-    font-weight: 600;
-    fill: var(--ink);
-    paint-order: stroke;
-    stroke: var(--paper-raised);
-    stroke-width: 5px;
-    stroke-linejoin: round;
-    opacity: 0;
+  [data-webgl] canvas {
+    display: block;
+  }
+  [data-webgl] .stage > :global(.fallback) {
+    display: none;
+  }
+  .labels {
+    position: absolute;
+    inset: 0;
     pointer-events: none;
-    transition: opacity var(--dur-fast) var(--ease-out);
   }
-  .pt:hover circle,
-  .pt:focus-visible circle {
-    fill-opacity: 1;
-    stroke: var(--ink);
+  .labels :global(.hill-label) {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--paper-raised) 85%, transparent);
+    font-size: var(--text-xs);
+    font-weight: 650;
+    white-space: nowrap;
+    color: var(--ink);
+    box-shadow: 0 0 0 1px var(--rule);
+    transition: opacity var(--dur) var(--ease-out);
   }
-  .pt:hover text,
-  .pt:focus-visible text {
-    opacity: 1;
+  .card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: grid;
+    gap: 0.2rem;
+    width: 13.5rem;
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--paper-raised);
+    box-shadow:
+      0 0 0 1px var(--rule),
+      0 12px 30px rgb(49 48 54 / 0.18);
+    text-decoration: none;
+    pointer-events: none;
   }
-  .pt:focus-visible {
-    outline: none;
+  .card img {
+    width: 100%;
+    height: 7.5rem;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-1);
   }
-  /* Bring the hovered point and its label above its neighbours. */
-  svg:has(.pt:hover) .pt:not(:hover) circle {
-    fill-opacity: 0.35;
+  .card-title {
+    font-weight: 700;
+    line-height: 1.25;
+  }
+  .card-meta {
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+  }
+  .hint {
+    position: absolute;
+    left: var(--space-4);
+    top: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+    display: none;
+  }
+  [data-webgl] .hint {
+    display: block;
   }
 
-  .pt--ai { --c: var(--cat-ai); }
-  .pt--workshop { --c: var(--cat-workshop); }
-  .pt--win { --c: var(--cat-win); }
-  .pt--partner { --c: var(--cat-partner); }
-  .pt--sports { --c: var(--cat-sports); }
-  .pt--culture { --c: var(--cat-culture); }
-  .pt--community { --c: var(--cat-community); }
+  .timeline {
+    display: none;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  [data-webgl] .timeline {
+    display: grid;
+  }
+  .play {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.75rem;
+    padding: 0 1rem 0 0.8rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--on-ink);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .play svg {
+    width: 1rem;
+    height: 1rem;
+    fill: currentColor;
+  }
+  .play[aria-pressed='true'] {
+    background: var(--signal);
+  }
+  .play .i-pause,
+  .play[aria-pressed='true'] .i-play {
+    display: none;
+  }
+  .play[aria-pressed='true'] .i-pause {
+    display: block;
+  }
+  .track {
+    display: grid;
+    gap: 0.2rem;
+  }
+  input[type='range'] {
+    width: 100%;
+    accent-color: var(--signal);
+  }
+  .years {
+    position: relative;
+    height: 1.1em;
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .years span {
+    position: absolute;
+    transform: translateX(-50%);
+  }
+  .readout {
+    display: grid;
+    justify-items: end;
+    line-height: 1.1;
+    min-width: 7.5rem;
+  }
+  .date {
+    font-size: var(--text-xl);
+    font-weight: 800;
+    font-stretch: 85%;
+  }
+  .latest {
+    grid-column: 1 / -1;
+    min-height: 1.5em;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+  }
+  .count {
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+  }
 
   .legend {
     display: flex;
@@ -159,8 +295,29 @@ const clampY = (y: number) => Math.min(H - PAD / 2, Math.max(PAD / 2, y));
     border-radius: 50%;
     background: var(--c);
   }
+  .key--ai { --c: var(--cat-ai); }
+  .key--workshop { --c: var(--cat-workshop); }
+  .key--win { --c: var(--cat-win); }
+  .key--partner { --c: var(--cat-partner); }
+  .key--sports { --c: var(--cat-sports); }
+  .key--culture { --c: var(--cat-culture); }
+  .key--community { --c: var(--cat-community); }
+  .key--next { --c: var(--signal); }
   figcaption .muted {
+    margin-top: var(--space-2);
     font-size: var(--text-sm);
-    max-width: 70ch;
+    max-width: 75ch;
+  }
+  @media (max-width: 40rem) {
+    .timeline {
+      grid-template-columns: 1fr auto;
+    }
+    .track {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+    .hint {
+      display: none !important;
+    }
   }
 </style>

@@ -19,6 +19,10 @@ const years = groupByYear(past);
     <p class="lead">AI contests, programming bootcamps, seminars, tournaments and festivals: {all.length} events since November 2023.</p>
   </header>
 
+  <section class="container map-section" aria-label="Event landscape">
+    <LatentMap />
+  </section>
+
   {
     upcoming.length > 0 && (
       <section class="container section-tight" aria-labelledby="upcoming-title">
@@ -33,15 +37,9 @@ const years = groupByYear(past);
   }
 
   <section class="container section-tight" aria-labelledby="past-title" data-past-events>
-    <div class="past-head">
-      <h2 id="past-title">Past events</h2>
-      <div class="view-toggle" role="group" aria-label="View" hidden data-view-toggle>
-        <button type="button" aria-pressed="true" data-view="list">List</button>
-        <button type="button" aria-pressed="false" data-view="map">Map</button>
-      </div>
-    </div>
+    <h2 id="past-title">Past events</h2>
 
-    <div data-panel="list">
+    <div>
       <form class="filters" hidden data-filters aria-label="Filter past events">
         <label>
           <span class="visually-hidden">Year</span>
@@ -91,31 +89,14 @@ const years = groupByYear(past);
       <p class="empty muted" hidden data-empty>No events match these filters.</p>
     </div>
 
-    <div data-panel="map" class="map-panel">
-      <h3 class="visually-hidden">Event map</h3>
-      <LatentMap events={past} />
-    </div>
   </section>
 </BaseLayout>
 
 <script>
-  // Progressive enhancement: without JS, the list and the map both show.
+  // Progressive enhancement: without JS the filters stay hidden and every event shows.
   const root = document.querySelector<HTMLElement>('[data-past-events]')!;
-  const toggle = root.querySelector<HTMLElement>('[data-view-toggle]')!;
   const form = root.querySelector<HTMLFormElement>('[data-filters]')!;
-  const panels = root.querySelectorAll<HTMLElement>('[data-panel]');
-  toggle.hidden = false;
   form.hidden = false;
-
-  const show = (view: string) => {
-    panels.forEach((p) => (p.hidden = p.dataset.panel !== view));
-    toggle.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
-  };
-  toggle.addEventListener('click', (e) => {
-    const view = (e.target as HTMLElement).closest('button')?.dataset.view;
-    if (view) show(view);
-  });
-  show('list');
 
   // Filters, mirrored in the URL so a filtered view can be shared (?category=sports&year=2025).
   const params = new URLSearchParams(location.search);
@@ -153,41 +134,17 @@ const years = groupByYear(past);
   .section-tight {
     padding-block: var(--space-6);
   }
-  .section-tight > h2,
-  .past-head {
+  .section-tight > h2 {
     margin-bottom: var(--space-5);
+  }
+  .map-section {
+    padding-bottom: var(--space-6);
   }
   .upcoming-grid {
     display: grid;
     grid-template-columns: 1.6fr 1fr;
     gap: var(--space-6);
     align-items: start;
-  }
-  .past-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-  .view-toggle {
-    display: inline-flex;
-    padding: 3px;
-    border-radius: var(--radius-sm);
-    background: var(--paper-sunk);
-  }
-  .view-toggle button {
-    min-width: 5rem;
-    min-height: 2.25rem;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .view-toggle [aria-pressed='true'] {
-    background: var(--paper-raised);
-    box-shadow: 0 1px 2px rgb(49 48 54 / 0.12);
   }
 
   .filters {
@@ -298,15 +255,6 @@ const years = groupByYear(past);
     font-size: var(--text-sm);
     font-weight: 600;
     color: var(--signal-strong);
-  }
-  .map-panel {
-    margin-top: var(--space-7);
-  }
-  [data-panel][hidden] {
-    display: none;
-  }
-  [data-panel='map']:not([hidden]) {
-    margin-top: 0;
   }
 
   @media (max-width: 52rem) {

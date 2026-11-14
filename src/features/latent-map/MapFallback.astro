@@ -1,0 +1,58 @@
+---
+/**
+ * Flat SVG version of the event map, shown when WebGL isn't available
+ * (or JavaScript is off). Same positions as the 3D landscape.
+ */
+import type { EventEntry } from '../../lib/content';
+import { eventUrl } from '../../lib/content';
+import { categoryVar } from '../../lib/categories';
+import { formatEventDate } from '../../lib/dates';
+import { withBase } from '../../lib/url';
+
+interface Props {
+  events: EventEntry[];
+  positions: { x: number; y: number }[];
+}
+const { events, positions } = Astro.props;
+const W = 1000;
+const H = 620;
+const PAD = 48;
+const pts = positions.map((p) => ({ x: PAD + p.x * (W - PAD * 2), y: PAD + p.y * (H - PAD * 2) }));
+const radius = events.map((e) => 7 + Math.sqrt(e.data.photos.length) * 2.4);
+---
+
+<svg class="fallback" viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Map of events, positioned by similarity of their descriptions">
+  {
+    events.map((e, i) => (
+      <a href={withBase(eventUrl(e))} class:list={['pt', `pt--${categoryVar(e.data.category)}`]}>
+        <title>{`${e.data.title} (${formatEventDate(e.data)})`}</title>
+        <circle cx={pts[i]!.x.toFixed(1)} cy={pts[i]!.y.toFixed(1)} r={radius[i]!.toFixed(1)} />
+      </a>
+    ))
+  }
+</svg>
+
+<style>
+  .fallback {
+    width: 100%;
+    height: 100%;
+  }
+  .pt circle {
+    fill: var(--c);
+    fill-opacity: 0.8;
+    stroke: var(--paper-raised);
+    stroke-width: 2;
+  }
+  .pt:hover circle,
+  .pt:focus-visible circle {
+    fill-opacity: 1;
+    stroke: var(--ink);
+  }
+  .pt--ai { --c: var(--cat-ai); }
+  .pt--workshop { --c: var(--cat-workshop); }
+  .pt--win { --c: var(--cat-win); }
+  .pt--partner { --c: var(--cat-partner); }
+  .pt--sports { --c: var(--cat-sports); }
+  .pt--culture { --c: var(--cat-culture); }
+  .pt--community { --c: var(--cat-community); }
+</style>

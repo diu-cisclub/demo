@@ -71,12 +71,48 @@ export function latentPositions(texts: string[]): { x: number; y: number }[] {
   const gram = C.map((a) => C.map((b) => dot(a, b)));
   const [pc1, pc2] = topEigen(gram, 2);
   const raw = texts.map((_, i) => [pc1!.vector[i]! * Math.sqrt(pc1!.value), pc2!.vector[i]! * Math.sqrt(pc2!.value)] as const);
+  // Blend min-max scaling with rank order: keeps clusters together but stops
+  // one dense cluster from squeezing everything else into a corner.
   const scale = (vals: number[]) => {
     const min = Math.min(...vals);
     const span = Math.max(...vals) - min || 1;
-    return vals.map((v) => (v - min) / span);
+    const rank = [...vals.keys()].sort((a, b) => vals[a]! - vals[b]!);
+    const ranked = new Array<number>(vals.length);
+    rank.forEach((idx, r) => (ranked[idx] = r / Math.max(1, vals.length - 1)));
+    return vals.map((v, i) => 0.45 * ((v - min) / span) + 0.55 * ranked[i]!);
   };
   const xs = scale(raw.map((p) => p[0]));
   const ys = scale(raw.map((p) => p[1]));
   return xs.map((x, i) => ({ x, y: ys[i]! }));
+}
+
+/**
+ * Groups nearby points (k-means, deterministic farthest-point start) and names
+ * each group after its most common label. Used to title the map's "hills".
+ */
+export function namedClusters(points: { x: number; y: number }[], labels: string[], k: number) {
+  const d2 = (a: { x: number; y: number }, b: { x: number; y: number }) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+  const centres = [points[0]!];
+  while (centres.length < Math.min(k, points.length)) {
+    centres.push(points.reduce((far, p) => (Math.min(...centres.map((c) => d2(c, p))) > Math.min(...centres.map((c) => d2(c, far))) ? p : far)));
+  }
+  let assign: number[] = [];
+  for (let it = 0; it < 30; it++) {
+    assign = points.map((p) => centres.reduce((best, c, i) => (d2(p, c) < d2(p, centres[best]!) ? i : best), 0));
+    centres.forEach((_, c) => {
+      const members = points.filter((_, i) => assign[i] === c);
+      if (members.length) centres[c] = { x: members.reduce((s, p) => s + p.x, 0) / members.length, y: members.reduce((s, p) => s + p.y, 0) / members.length };
+    });
+  }
+  return centres
+    .map((centre, c) => {
+      const counts = new Map<string, number>();
+      labels.forEach((l, i) => assign[i] === c && counts.set(l, (counts.get(l) ?? 0) + 1));
+      const [label = '', size = 0] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [];
+      return { ...centre, label, size };
+    })
+    .filter((c) => c.size >= 3)
+    .sort((a, b) => b.size - a.size)
+    // One label per name: the biggest hill keeps it.
+    .filter((c, i, all) => all.findIndex((o) => o.label === c.label) === i);
 }
