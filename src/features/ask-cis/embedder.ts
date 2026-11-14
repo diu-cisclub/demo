@@ -15,6 +15,10 @@ export function loadEmbedder(base: string, onProgress?: (fraction: number) => vo
   loading ??= (async () => {
     const { pipeline, env } = await import('@huggingface/transformers');
     env.allowLocalModels = false;
+    // Its "WASM cache" re-runs the runtime from a blob: URL, which our CSP
+    // (rightly) forbids. Load it straight from this site instead; the browser's
+    // normal HTTP cache still applies.
+    env.useWasmCache = false;
     // Serve the ONNX runtime from this site instead of a CDN (see scripts/copy-vendor.mjs).
     const onnx = env.backends.onnx as { wasm?: { wasmPaths?: unknown } };
     if (onnx.wasm) {
