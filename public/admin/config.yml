@@ -5,7 +5,7 @@
 
 backend:
   name: github
-  repo: diu-cisclub/diu-cisclub.github.io
+  repo: diu-cisclub/demo
   branch: main
 
 # Default for uploads that don't belong to an event or committee.

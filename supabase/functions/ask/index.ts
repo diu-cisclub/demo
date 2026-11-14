@@ -10,7 +10,7 @@
  * Secrets (Supabase → Edge Functions → Secrets):
  *   GEMINI_API_KEY  required. From Google AI Studio.
  *   GEMINI_MODEL    optional. Tried first; falls back to current Flash-Lite models.
- *   SITE_URL        optional. Defaults to https://diu-cisclub.github.io
+ *   SITE_URL        optional. Defaults to https://diu-cisclub.github.io/demo
  *
  * Privacy: questions and IP addresses are never stored or logged. IPs live
  * only in this instance's memory for rate limiting.
@@ -22,7 +22,7 @@ interface Doc {
   text: string;
 }
 
-const SITE = (Deno.env.get('SITE_URL') ?? 'https://diu-cisclub.github.io').replace(/\/+$/, '');
+const SITE = (Deno.env.get('SITE_URL') ?? 'https://diu-cisclub.github.io/demo').replace(/\/+$/, '');
 // Tried in order: Google retires model names over time, so a missing model
 // falls through to the next instead of breaking Ask CIS.
 const MODELS = [Deno.env.get('GEMINI_MODEL'), 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'].filter(
