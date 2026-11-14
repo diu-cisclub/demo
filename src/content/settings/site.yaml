@@ -17,4 +17,4 @@ socials:
     url: https://studentshub.daffodilvarsity.edu.bd/club/57/home
 # Paste the public key from /admin/inbox → "Encryption key" here.
 # Until it is set, the join and contact forms stay closed.
-inboxPublicKey: ''
+inboxPublicKey: "{\"kty\":\"EC\",\"crv\":\"P-256\",\"x\":\"VCbPPBIvNNiJGFACDZ0Ja2ANr6E_7IQi84XljYaPZVY\",\"y\":\"KA0LGJCIjwYUolse7C6jXFNPh9SqxJ54XhzTkx5I8m8\"}"
